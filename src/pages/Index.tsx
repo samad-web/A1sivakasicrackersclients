@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useOrders, useOrderStats } from '@/hooks/useOrders';
@@ -107,6 +108,9 @@ const Index = () => {
                 <DialogContent className="sm:max-w-md premium-card border-none">
                   <DialogHeader>
                     <DialogTitle className="text-2xl font-black text-gradient">Add New Record</DialogTitle>
+                    <DialogDescription>
+                      Enter the details for the new order below.
+                    </DialogDescription>
                   </DialogHeader>
                   <OrderForm />
                 </DialogContent>

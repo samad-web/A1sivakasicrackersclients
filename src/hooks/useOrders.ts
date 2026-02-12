@@ -31,7 +31,7 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
       if (filters.paymentFilter === 'verified') {
         query = query.eq('payment_verified', true);
       } else if (filters.paymentFilter === 'unverified') {
-        query = query.eq('payment_verified', false);
+        query = query.or('payment_verified.eq.false,payment_verified.is.null');
       }
 
       // Apply Type Filter
@@ -114,25 +114,49 @@ export function useToggleOrderFlag() {
       if (error) throw error;
 
       // Trigger Webhook directly from frontend when Order is marked "Done"
-      if (field === 'order_completed' && value === true) {
+      // Trigger Webhook directly from frontend when Payment is Verified
+      if (field === 'payment_verified' && value === true) {
         const fullOrder = order || existing;
         if (fullOrder) {
           const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
           const monthLabel = new Date(fullOrder.current_month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          const addrLines = (fullOrder.customer_address || '').split('\n').filter(Boolean);
+
+          // Parse address components
+          const rawAddress = fullOrder.customer_address || '';
+          const parts = rawAddress.split(',').map(p => p.trim());
+          let pincode = '';
+          let state = '';
+
+          // Find pincode (format: "Pin - XXXXXX")
+          const pinIndex = parts.findIndex(p => p.startsWith('Pin - '));
+
+          if (pinIndex !== -1) {
+            pincode = parts[pinIndex].replace('Pin - ', '');
+            // Assume state is immediately before pincode
+            if (pinIndex > 0) {
+              state = parts[pinIndex - 1];
+            }
+          }
+
+          // Remaining parts form address_line1
+          const line1Parts = parts.filter((_, i) => i !== pinIndex && (pinIndex === -1 || i !== pinIndex - 1));
+          const addressLine1 = line1Parts.join(', ');
+
+          // Requested format: District, State, Pincode in address_line2
+          const addressLine2 = [fullOrder.district, state, pincode].filter(Boolean).join(', ');
 
           const payload = {
-            order_completed: true,
-            payment_verified: fullOrder.payment_verified || false,
+            order_completed: fullOrder.order_completed || false,
+            payment_verified: true,
             id: orderId,
             receipt_no: fullOrder.receipt_no,
             date: date,
             customer_name: fullOrder.name,
             contact_number: `91${fullOrder.number}`,
             secondary_number: fullOrder.secondary_number || '',
-            customer_address: fullOrder.customer_address || '',
-            address_line1: addrLines[0] || '',
-            address_line2: addrLines.slice(1).join(', ') || '',
+            // customer_address removed as per request
+            address_line1: addressLine1,
+            address_line2: addressLine2,
             scheme_name: fullOrder.scheme,
             scheme_details: fullOrder.type,
             value: fullOrder.value,

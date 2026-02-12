@@ -18,7 +18,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Order } from '@/types/order';
 import { useUpsertOrder } from '@/hooks/useOrders';
 
@@ -27,7 +26,13 @@ const formSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     number: z.string().min(10, 'Valid number required'),
     secondary_number: z.string().optional(),
-    customer_address: z.string().optional(),
+    // Address Fields
+    address_line1: z.string().min(1, 'Address Line 1 is required'),
+    address_line2: z.string().optional(),
+    city: z.string().min(1, 'City is required'),
+    pincode: z.string().min(6, 'Valid Pincode required'),
+    state: z.string().min(1, 'State is required'),
+
     payment_mode: z.string().optional(),
     scheme: z.string().min(1, 'Scheme is required'),
     value: z.coerce.number().min(0),
@@ -44,6 +49,52 @@ interface OrderFormProps {
 export function OrderForm({ order, onSuccess }: OrderFormProps) {
     const upsertOrder = useUpsertOrder();
 
+    // Helper to parse existing address string into fields
+    const parseAddress = (fullAddress: string | null | undefined) => {
+        if (!fullAddress) return {
+            address_line1: '',
+            address_line2: '',
+            city: '',
+            pincode: '',
+            state: 'Tamil Nadu' // Default
+        };
+
+        // Simple heuristic: if it contains commas, try to split. 
+        // Otherwise put everything in Line 1.
+        // This is a best-effort parsing for legacy data.
+        const parts = fullAddress.split(',').map(p => p.trim());
+
+        if (parts.length >= 3) {
+            // Try to extract pincode from the last part
+            const lastPart = parts[parts.length - 1];
+            const pincodeMatch = lastPart.match(/\d{6}/);
+            const pincode = pincodeMatch ? pincodeMatch[0] : '';
+
+            // Assume format: Line 1, Line 2, City, State - Pincode
+            // This is ambiguous, so we'll just populate Line 1 with most of it for safety
+            // unless we are sure.
+
+            // SAFER STRATEGY: Just put it all in Line 1 for editing.
+            return {
+                address_line1: fullAddress,
+                address_line2: '',
+                city: '',
+                pincode: '',
+                state: 'Tamil Nadu'
+            };
+        }
+
+        return {
+            address_line1: fullAddress,
+            address_line2: '',
+            city: '',
+            pincode: '',
+            state: 'Tamil Nadu'
+        };
+    };
+
+    const addressDefaults = parseAddress(order?.customer_address);
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -51,7 +102,13 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
             name: order?.name || '',
             number: order?.number || '',
             secondary_number: order?.secondary_number || '',
-            customer_address: order?.customer_address || '',
+
+            address_line1: addressDefaults.address_line1,
+            address_line2: addressDefaults.address_line2,
+            city: addressDefaults.city,
+            pincode: addressDefaults.pincode,
+            state: addressDefaults.state,
+
             payment_mode: order?.payment_mode || 'Gpay',
             scheme: order?.scheme || '',
             value: order?.value || 0,
@@ -62,8 +119,28 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
     });
 
     function onSubmit(values: z.infer<typeof formSchema>) {
+        // Concatenate address fields
+        const fullAddress = [
+            values.address_line1,
+            values.address_line2,
+            values.city,
+            values.state,
+            values.pincode ? `Pin - ${values.pincode}` : ''
+        ].filter(Boolean).join(', ');
+
+        const submissionData = {
+            ...values,
+            customer_address: fullAddress,
+            // Remove individual address fields from the payload sent to API
+            address_line1: undefined,
+            address_line2: undefined,
+            city: undefined,
+            pincode: undefined,
+            state: undefined,
+        };
+
         upsertOrder.mutate(
-            { ...values, id: order?.id },
+            { ...submissionData, id: order?.id } as any,
             {
                 onSuccess: () => {
                     onSuccess?.();
@@ -118,23 +195,77 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
                     )}
                 />
 
-                <FormField
-                    control={form.control}
-                    name="customer_address"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Customer Address</FormLabel>
-                            <FormControl>
-                                <Textarea
-                                    placeholder="Enter full address here..."
-                                    className="resize-none h-20"
-                                    {...field}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                {/* Address Section */}
+                <div className="space-y-3 bg-muted/30 p-4 rounded-lg border">
+                    <h3 className="text-sm font-semibold text-foreground/80">Address Details</h3>
+                    <FormField
+                        control={form.control}
+                        name="address_line1"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Address Line 1</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Door No, Street Name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="address_line2"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Address Line 2 (Optional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Area, Landmark" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <div className="grid grid-cols-3 gap-3">
+                        <FormField
+                            control={form.control}
+                            name="city"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">City/Town</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="City" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="state"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">State</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="State" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="pincode"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Pincode</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="600001" {...field} maxLength={6} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <FormField

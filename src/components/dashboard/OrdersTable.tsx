@@ -94,25 +94,37 @@ export function OrdersTable({
             </div>
           )}
         </div>
-        {/* ... existing filters ... */}
 
-        <select
-          value={typeFilter}
-          onChange={(e) => onTypeFilterChange(e.target.value)}
-          className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
-        >
-          <option value="all">All Types</option>
-          <option value="10 Months">10 Months</option>
-          <option value="12 Months">12 Months</option>
-        </select>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearFilters}
-          className="w-full md:w-auto hover:bg-primary/5 text-muted-foreground"
-        >
-          Clear Filters
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <select
+            value={paymentFilter}
+            onChange={(e) => onPaymentFilterChange(e.target.value as PaymentStatusFilter)}
+            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
+          >
+            <option value="all">Verification Status</option>
+            <option value="verified">Verified</option>
+            <option value="unverified">Unverified</option>
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => onTypeFilterChange(e.target.value)}
+            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
+          >
+            <option value="all">All Types</option>
+            <option value="10 Months">10 Months</option>
+            <option value="12 Months">12 Months</option>
+          </select>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="w-full md:w-auto hover:bg-primary/5 text-muted-foreground"
+          >
+            Clear Filters
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Card View (Hidden on Desktop) */}
@@ -135,7 +147,7 @@ export function OrdersTable({
                   <h3 className="font-bold text-lg leading-tight mt-0.5">{order.name}</h3>
                   <p className="text-sm text-muted-foreground">{order.number}</p>
                   {order.customer_address && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{order.customer_address}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{order.customer_address}</p>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -143,13 +155,13 @@ export function OrdersTable({
                     {formatCurrency(order.value)}
                   </div>
                   <div className="flex border-none items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Done</span>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Verified</span>
                     <input
                       type="checkbox"
-                      checked={order.order_completed}
+                      checked={order.payment_verified}
                       onChange={(e) => toggleFlag.mutate({
                         orderId: order.id,
-                        field: 'order_completed',
+                        field: 'payment_verified',
                         value: e.target.checked,
                         order: order
                       })}
@@ -187,7 +199,7 @@ export function OrdersTable({
                 <TableHead className="font-bold py-4">Scheme/Type</TableHead>
                 <TableHead className="font-bold py-4">Payment Mode</TableHead>
                 <TableHead className="text-right font-bold py-4">Value</TableHead>
-                <TableHead className="text-center font-bold py-4">Done</TableHead>
+                <TableHead className="text-center font-bold py-4">Verified</TableHead>
                 <TableHead className="text-right font-bold py-4 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -213,7 +225,7 @@ export function OrdersTable({
                         <p className="font-bold text-base group-hover:text-primary transition-colors">{order.name}</p>
                         <p className="text-xs text-muted-foreground font-medium">{order.number}</p>
                         {order.customer_address && (
-                          <p className="text-[11px] text-muted-foreground italic mt-1 max-w-[200px] truncate">{order.customer_address}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1 whitespace-normal">{order.customer_address}</p>
                         )}
                       </div>
                     </TableCell>
@@ -239,10 +251,10 @@ export function OrdersTable({
                     <TableCell className="text-center py-4">
                       <input
                         type="checkbox"
-                        checked={order.order_completed}
+                        checked={order.payment_verified}
                         onChange={(e) => toggleFlag.mutate({
                           orderId: order.id,
-                          field: 'order_completed',
+                          field: 'payment_verified',
                           value: e.target.checked,
                           order: order
                         })}

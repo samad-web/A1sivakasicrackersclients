@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
@@ -90,6 +91,9 @@ export function OrderActions({ order }: OrderActionsProps) {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Record - {order.receipt_no}</DialogTitle>
+              <DialogDescription>
+                Make changes to the order details below.
+              </DialogDescription>
             </DialogHeader>
             <OrderForm order={order} onSuccess={() => setIsOpen(false)} />
           </DialogContent>
