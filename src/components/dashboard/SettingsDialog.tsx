@@ -27,6 +27,7 @@ import { useDeleteAllOrders } from '@/hooks/useOrders';
 
 export function SettingsDialog() {
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [paymentWebhookUrl, setPaymentWebhookUrl] = useState('');
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -35,11 +36,14 @@ export function SettingsDialog() {
 
   useEffect(() => {
     const savedWebhook = localStorage.getItem('n8n_webhook_url');
+    const savedPaymentWebhook = localStorage.getItem('n8n_payment_webhook_url');
     if (savedWebhook) setWebhookUrl(savedWebhook);
+    if (savedPaymentWebhook) setPaymentWebhookUrl(savedPaymentWebhook);
   }, []);
 
   const handleSave = () => {
     localStorage.setItem('n8n_webhook_url', webhookUrl);
+    localStorage.setItem('n8n_payment_webhook_url', paymentWebhookUrl);
     toast.success('Configuration saved');
   };
 
@@ -73,9 +77,29 @@ export function SettingsDialog() {
 
         <div className="space-y-6 pt-4">
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">General Configuration</h3>
+            <h3 className="text-sm font-medium">n8n Webhook Configuration</h3>
+
             <div className="space-y-2">
-              <Label htmlFor="webhook">n8n General Webhook URL</Label>
+              <Label htmlFor="payment-webhook">Payment & Invoice Webhook URL</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <RefreshCw className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="payment-webhook"
+                    placeholder="https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook"
+                    value={paymentWebhookUrl}
+                    onChange={(e) => setPaymentWebhookUrl(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Triggered for payment verification and invoice generation events.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="webhook">General/Import Webhook URL</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Webhook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -89,7 +113,7 @@ export function SettingsDialog() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                This webhook is triggered for payment verification and invoice generation events.
+                Webhook for general data operations or imports.
               </p>
             </div>
           </div>

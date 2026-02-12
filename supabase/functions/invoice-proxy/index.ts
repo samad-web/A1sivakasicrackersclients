@@ -15,14 +15,18 @@ serve(async (req) => {
 
     try {
         const body = await req.json()
+        const targetUrl = body.webhook_url || N8N_WEBHOOK_URL;
 
-        // Mode 1: Direct payload forwarding (used by useUpsertOrder)
+        // Mode 1: Direct payload forwarding
         // If payload already has receipt_no, forward it directly
         if (body.receipt_no) {
-            const n8nRes = await fetch(N8N_WEBHOOK_URL, {
+            // Remove webhook_url from payload before forwarding to n8n if you don't want n8n to see it
+            const { webhook_url, ...payloadToForward } = body;
+
+            const n8nRes = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify(payloadToForward),
             });
 
             const n8nData = await n8nRes.text();
@@ -94,7 +98,7 @@ serve(async (req) => {
         };
 
         // Forward to n8n
-        const n8nRes = await fetch(N8N_WEBHOOK_URL, {
+        const n8nRes = await fetch(targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),

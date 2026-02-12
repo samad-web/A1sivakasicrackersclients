@@ -98,7 +98,7 @@ export function useToggleOrderFlag() {
       // Check if locked
       const { data: existing } = await supabase
         .from('orders')
-        .select('payment_verified, order_completed, name, number, receipt_no, value, scheme, current_month, customer_address, payment_mode, type')
+        .select('*')
         .eq('id', orderId)
         .single();
 
@@ -113,8 +113,8 @@ export function useToggleOrderFlag() {
 
       if (error) throw error;
 
-      // Trigger Webhook via edge function if payment verified
-      if (field === 'payment_verified' && value === true) {
+      // Trigger Webhook directly from frontend when Order is marked "Done"
+      if (field === 'order_completed' && value === true) {
         const fullOrder = order || existing;
         if (fullOrder) {
           const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -122,25 +122,46 @@ export function useToggleOrderFlag() {
           const addrLines = (fullOrder.customer_address || '').split('\n').filter(Boolean);
 
           const payload = {
-            payment_completed: true,
+            order_completed: true,
+            payment_verified: fullOrder.payment_verified || false,
+            id: orderId,
             receipt_no: fullOrder.receipt_no,
             date: date,
             customer_name: fullOrder.name,
             contact_number: `91${fullOrder.number}`,
+            secondary_number: fullOrder.secondary_number || '',
+            customer_address: fullOrder.customer_address || '',
             address_line1: addrLines[0] || '',
             address_line2: addrLines.slice(1).join(', ') || '',
-            scheme_details: fullOrder.type,
             scheme_name: fullOrder.scheme,
+            scheme_details: fullOrder.type,
+            value: fullOrder.value,
+            amount_paid: String(fullOrder.value),
+            district: fullOrder.district || '',
             month_label: monthLabel,
             current_month: fullOrder.current_month,
-            amount_paid: String(fullOrder.value),
-            payment_mode: fullOrder.payment_mode || 'Gpay'
+            payment_mode: fullOrder.payment_mode || 'Gpay',
+            invoice_url: fullOrder.invoice_url || '',
+            created_at: fullOrder.created_at,
+            updated_at: fullOrder.updated_at,
           };
 
-          // Route through edge function to avoid CORS
-          supabase.functions.invoke('invoice-proxy', {
-            body: payload,
-          }).catch(err => console.error('Webhook trigger failed:', err));
+          const savedWebhook = localStorage.getItem('n8n_payment_webhook_url');
+          const webhookUrl = savedWebhook || 'https://n8n.srv930949.hstgr.cloud/webhook-test/payment-webhook';
+
+          console.log(`[Webhook] Triggering for ${field}...`, { url: webhookUrl, payload });
+
+          // Trigger Webhook Directly from Frontend
+          fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+            .then(async res => {
+              const text = await res.text();
+              console.log(`[Webhook] Response (${res.status}):`, text);
+            })
+            .catch(err => console.error('[Webhook] Trigger failed:', err));
         }
       }
     },
@@ -184,36 +205,6 @@ export function useUpsertOrder() {
         if (error) throw error;
       }
 
-      // Trigger webhook immediately via edge function (no CORS issues)
-      const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      const currentMonth = order.current_month || new Date().toISOString().slice(0, 7);
-      const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      const addrLines = (order.customer_address || '').split('\n').filter(Boolean);
-
-      const payload = {
-        record_updated: true,
-        receipt_no: order.receipt_no || '',
-        date: date,
-        customer_name: order.name || '',
-        contact_number: `91${order.number || ''}`,
-        address_line1: addrLines[0] || '',
-        address_line2: addrLines.slice(1).join(', ') || '',
-        scheme_details: order.type || '',
-        scheme_name: order.scheme || '',
-        month_label: monthLabel,
-        current_month: currentMonth,
-        amount_paid: String(order.value || 0),
-        payment_mode: order.payment_mode || 'Gpay',
-      };
-
-      // Route through edge function to avoid CORS
-      try {
-        await supabase.functions.invoke('invoice-proxy', {
-          body: payload,
-        });
-      } catch (err) {
-        console.error('Webhook trigger failed:', err);
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });

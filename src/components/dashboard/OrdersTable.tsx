@@ -95,34 +95,24 @@ export function OrdersTable({
           )}
         </div>
         {/* ... existing filters ... */}
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <select
-            value={paymentFilter}
-            onChange={(e) => onPaymentFilterChange(e.target.value as PaymentStatusFilter)}
-            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
-          >
-            <option value="all">All Payment</option>
-            <option value="verified">Verified</option>
-            <option value="unverified">Unverified</option>
-          </select>
-          <select
-            value={typeFilter}
-            onChange={(e) => onTypeFilterChange(e.target.value)}
-            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="10 Months">10 Months</option>
-            <option value="12 Months">12 Months</option>
-          </select>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-            className="w-full md:w-auto hover:bg-primary/5 text-muted-foreground"
-          >
-            Clear Filters
-          </Button>
-        </div>
+
+        <select
+          value={typeFilter}
+          onChange={(e) => onTypeFilterChange(e.target.value)}
+          className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
+        >
+          <option value="all">All Types</option>
+          <option value="10 Months">10 Months</option>
+          <option value="12 Months">12 Months</option>
+        </select>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="w-full md:w-auto hover:bg-primary/5 text-muted-foreground"
+        >
+          Clear Filters
+        </Button>
       </div>
 
       {/* Mobile Card View (Hidden on Desktop) */}
@@ -144,24 +134,27 @@ export function OrdersTable({
                   <p className="font-mono text-[10px] font-bold text-primary/60">{order.receipt_no}</p>
                   <h3 className="font-bold text-lg leading-tight mt-0.5">{order.name}</h3>
                   <p className="text-sm text-muted-foreground">{order.number}</p>
+                  {order.customer_address && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{order.customer_address}</p>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="font-black text-lg text-primary">
                     {formatCurrency(order.value)}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Paid</span>
+                  <div className="flex border-none items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Done</span>
                     <input
                       type="checkbox"
-                      checked={order.payment_verified}
+                      checked={order.order_completed}
                       onChange={(e) => toggleFlag.mutate({
                         orderId: order.id,
-                        field: 'payment_verified',
+                        field: 'order_completed',
                         value: e.target.checked,
                         order: order
                       })}
                       disabled={toggleFlag.isPending}
-                      className="h-5 w-5 rounded-md border-primary/20 text-primary focus:ring-primary transition-all active:scale-90"
+                      className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all active:scale-90"
                     />
                   </div>
                 </div>
@@ -190,11 +183,11 @@ export function OrdersTable({
             <TableHeader>
               <TableRow className="bg-table-header/50 border-b hover:bg-table-header/50">
                 <TableHead className="w-[120px] font-bold py-4">Receipt No</TableHead>
-                <TableHead className="font-bold py-4">Customer</TableHead>
+                <TableHead className="font-bold py-4">Customer / Address</TableHead>
                 <TableHead className="font-bold py-4">Scheme/Type</TableHead>
                 <TableHead className="font-bold py-4">Payment Mode</TableHead>
                 <TableHead className="text-right font-bold py-4">Value</TableHead>
-                <TableHead className="text-center font-bold py-4">Paid</TableHead>
+                <TableHead className="text-center font-bold py-4">Done</TableHead>
                 <TableHead className="text-right font-bold py-4 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -219,6 +212,9 @@ export function OrdersTable({
                       <div>
                         <p className="font-bold text-base group-hover:text-primary transition-colors">{order.name}</p>
                         <p className="text-xs text-muted-foreground font-medium">{order.number}</p>
+                        {order.customer_address && (
+                          <p className="text-[11px] text-muted-foreground italic mt-1 max-w-[200px] truncate">{order.customer_address}</p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
@@ -243,15 +239,15 @@ export function OrdersTable({
                     <TableCell className="text-center py-4">
                       <input
                         type="checkbox"
-                        checked={order.payment_verified}
+                        checked={order.order_completed}
                         onChange={(e) => toggleFlag.mutate({
                           orderId: order.id,
-                          field: 'payment_verified',
+                          field: 'order_completed',
                           value: e.target.checked,
                           order: order
                         })}
                         disabled={toggleFlag.isPending}
-                        className="h-5 w-5 rounded-md border-primary/20 text-primary focus:ring-primary transition-all hover:scale-110 active:scale-90"
+                        className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all hover:scale-110 active:scale-90"
                       />
                     </TableCell>
                     <TableCell className="text-right py-4 pr-6">
@@ -266,50 +262,52 @@ export function OrdersTable({
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-sm text-muted-foreground font-medium">
-            Showing <span className="font-bold text-foreground">{page * pageSize + 1}</span> to <span className="font-bold text-foreground">{Math.min((page + 1) * pageSize, totalCount)}</span> of <span className="font-bold text-foreground">{totalCount}</span> results
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(page - 1)}
-              disabled={page === 0}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                // Simplified pagination: showing first 5 pages for now
-                return (
-                  <Button
-                    key={i}
-                    variant={page === i ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => onPageChange(i)}
-                    className="h-8 w-8 p-0 text-xs font-bold"
-                  >
-                    {i + 1}
-                  </Button>
-                );
-              })}
-              {totalPages > 5 && <span className="text-muted-foreground px-1">...</span>}
+      {
+        totalPages > 1 && (
+          <div className="flex items-center justify-between px-2 py-4">
+            <p className="text-sm text-muted-foreground font-medium">
+              Showing <span className="font-bold text-foreground">{page * pageSize + 1}</span> to <span className="font-bold text-foreground">{Math.min((page + 1) * pageSize, totalCount)}</span> of <span className="font-bold text-foreground">{totalCount}</span> results
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page === 0}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  // Simplified pagination: showing first 5 pages for now
+                  return (
+                    <Button
+                      key={i}
+                      variant={page === i ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => onPageChange(i)}
+                      className="h-8 w-8 p-0 text-xs font-bold"
+                    >
+                      {i + 1}
+                    </Button>
+                  );
+                })}
+                {totalPages > 5 && <span className="text-muted-foreground px-1">...</span>}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages - 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages - 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
