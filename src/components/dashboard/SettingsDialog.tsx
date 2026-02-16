@@ -36,14 +36,14 @@ export function SettingsDialog() {
 
   useEffect(() => {
     const savedWebhook = localStorage.getItem('n8n_webhook_url');
-    const savedPaymentWebhook = localStorage.getItem('n8n_payment_webhook_url');
     if (savedWebhook) setWebhookUrl(savedWebhook);
-    if (savedPaymentWebhook) setPaymentWebhookUrl(savedPaymentWebhook);
+    setPaymentWebhookUrl('https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook');
   }, []);
 
   const handleSave = () => {
     localStorage.setItem('n8n_webhook_url', webhookUrl);
-    localStorage.setItem('n8n_payment_webhook_url', paymentWebhookUrl);
+    // Remove legacy local override if it exists
+    localStorage.removeItem('n8n_payment_webhook_url');
     toast.success('Configuration saved');
   };
 
@@ -86,10 +86,9 @@ export function SettingsDialog() {
                   <RefreshCw className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="payment-webhook"
-                    placeholder="https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook"
-                    value={paymentWebhookUrl}
-                    onChange={(e) => setPaymentWebhookUrl(e.target.value)}
-                    className="pl-9"
+                    readOnly
+                    value="https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook"
+                    className="pl-9 bg-muted"
                   />
                 </div>
               </div>

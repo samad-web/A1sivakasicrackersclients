@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { useOrders, useOrderStats } from '@/hooks/useOrders';
 import { PaymentStatusFilter } from '@/types/order';
+import { useResponsivePageSize } from '@/hooks/use-mobile';
+
 
 const Index = () => {
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -28,6 +30,8 @@ const Index = () => {
   const [displaySearch, setDisplaySearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<PaymentStatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const pageSize = useResponsivePageSize();
+
 
   // Debounce search query
   useEffect(() => {
@@ -38,19 +42,24 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [displaySearch]);
 
+  const monthName = useMemo(() => {
+    return new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'long' });
+  }, [currentMonth]);
+
   const {
     data: ordersData = { data: [], count: 0 },
     isLoading,
     refetch,
     isFetching
   } = useOrders({
-    currentMonth,
+    monthName,
     searchQuery,
     paymentFilter,
     typeFilter
-  }, page);
+  }, page, pageSize || 50);
 
-  const { data: stats } = useOrderStats(currentMonth);
+
+  const { data: stats } = useOrderStats(monthName);
 
   const months = useMemo(() => {
     const options = [];
@@ -76,12 +85,13 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 animate-float">
-                <Sparkles className="h-6 w-6 text-white" />
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 animate-float overflow-hidden relative">
+                <img src="/logo.svg" alt="A1 Sivakasi Crackers Logo" className="h-full w-full object-cover" />
+                <Sparkles className="h-6 w-6 text-white absolute opacity-20" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-gradient">Crackers Admin</h1>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Premium Order Intelligence</p>
+                <h1 className="text-2xl font-black tracking-tight text-gradient">A1 Sivakasi Crackers</h1>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Premium Order Management</p>
               </div>
             </div>
 
@@ -141,14 +151,18 @@ const Index = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-black tracking-tight border-l-4 border-primary pl-3">Order Registry</h2>
-            <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground uppercase">{ordersData.count} Total</span>
+            <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground uppercase">{(ordersData?.count || 0)} Total</span>
+
           </div>
           <OrdersTable
-            orders={ordersData.data}
+            orders={ordersData?.data || []}
             isLoading={isLoading}
             page={page}
             onPageChange={setPage}
-            totalCount={ordersData.count}
+            pageSize={pageSize || 50}
+            totalCount={ordersData?.count || 0}
+
+
             searchQuery={displaySearch}
             onSearchChange={setDisplaySearch}
             isFetching={isFetching}
@@ -156,6 +170,7 @@ const Index = () => {
             onPaymentFilterChange={(f) => { setPaymentFilter(f); setPage(0); }}
             typeFilter={typeFilter}
             onTypeFilterChange={(t) => { setTypeFilter(t); setPage(0); }}
+            monthName={monthName}
           />
         </div>
       </main>
@@ -164,11 +179,12 @@ const Index = () => {
       <footer className="border-t bg-card/50 backdrop-blur-sm mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center overflow-hidden relative">
+              <img src="/logo.svg" alt="Logo" className="h-full w-full object-cover" />
+              <Sparkles className="h-4 w-4 text-muted-foreground absolute opacity-20" />
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center">
-              Crackers Intelligence Dashboard • Built for Precision
+              A1 Sivakasi Crackers Dashboard • Built for Precision
             </p>
           </div>
         </div>

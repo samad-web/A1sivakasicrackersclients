@@ -38,7 +38,6 @@ const formSchema = z.object({
     value: z.coerce.number().min(0),
     type: z.string().min(1, 'Type is required'),
     district: z.string().min(1, 'District is required'),
-    current_month: z.string().regex(/^\d{4}-\d{2}$/, 'Format must be YYYY-MM'),
 });
 
 interface OrderFormProps {
@@ -114,7 +113,6 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
             value: order?.value || 0,
             type: order?.type || '10 Months',
             district: order?.district || '',
-            current_month: order?.current_month || new Date().toISOString().slice(0, 7),
         },
     });
 
@@ -161,19 +159,6 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
                                 <FormLabel>Receipt No</FormLabel>
                                 <FormControl>
                                     <Input placeholder="R-123" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="current_month"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Month (YYYY-MM)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="2024-05" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

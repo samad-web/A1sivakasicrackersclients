@@ -38,7 +38,7 @@ export function OrderActions({ order }: OrderActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const deleteMutation = useDeleteOrder();
-  const isLocked = order.payment_verified && order.order_completed;
+  const isLocked = order.order_completed;
 
   const handleDelete = () => {
     deleteMutation.mutate(order.id);
@@ -103,7 +103,7 @@ export function OrderActions({ order }: OrderActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the record for {order.name} ({order.receipt_no}) for the month of {order.current_month}.
+              This will permanently delete the record for {order.name} ({order.receipt_no}) and all associated monthly payment history.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

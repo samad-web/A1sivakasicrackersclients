@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="#0a0a0a"/>
+  
+  <!-- Fireworks/Sparkles Effect (Simplified) -->
+  <g opacity="0.6">
+    <circle cx="256" cy="230" r="180" fill="url(#firework-grad)" opacity="0.3"/>
+    <path d="M256 50 L256 410 M50 230 L462 230 M110 84 L402 376 M402 84 L110 376" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 8"/>
+    <circle cx="256" cy="230" r="140" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="2 10" opacity="0.5"/>
+  </g>
+  
+  <defs>
+    <radialGradient id="firework-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Yellow Circle -->
+  <circle cx="256" cy="230" r="100" fill="#facc15" stroke="#eab308" stroke-width="4"/>
+  
+  <!-- A1 Text -->
+  <text x="256" y="265" font-family="Arial, sans-serif" font-weight="900" font-size="120" fill="#1e3a8a" text-anchor="middle">A1</text>
+  
+  <!-- SIVAKASI CRACKERS Text -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-weight="900" font-size="42" fill="#facc15" text-anchor="middle">SIVAKASI</text>
+  <text x="256" y="470" font-family="Arial, sans-serif" font-weight="900" font-size="42" fill="#facc15" text-anchor="middle">CRACKERS</text>
+</svg>

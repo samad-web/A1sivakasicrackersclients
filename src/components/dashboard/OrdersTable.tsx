@@ -18,7 +18,9 @@ interface OrdersTableProps {
   isLoading: boolean;
   isFetching: boolean;
   page: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
+
   totalCount: number;
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -26,6 +28,7 @@ interface OrdersTableProps {
   onPaymentFilterChange: (filter: PaymentStatusFilter) => void;
   typeFilter: string;
   onTypeFilterChange: (type: string) => void;
+  monthName: string;
 }
 
 export function OrdersTable({
@@ -33,7 +36,9 @@ export function OrdersTable({
   isLoading,
   isFetching,
   page,
+  pageSize,
   onPageChange,
+
   totalCount,
   searchQuery,
   onSearchChange,
@@ -41,10 +46,12 @@ export function OrdersTable({
   onPaymentFilterChange,
   typeFilter,
   onTypeFilterChange,
+  monthName,
 }: OrdersTableProps) {
   const toggleFlag = useToggleOrderFlag();
-  const pageSize = 50;
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const safePageSize = pageSize || 50;
+  const totalPages = Math.ceil((totalCount || 0) / safePageSize);
+
 
   const clearFilters = () => {
     onSearchChange('');
@@ -53,15 +60,16 @@ export function OrdersTable({
   };
 
   const formatCurrency = (amount: number) => {
+    const value = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(value);
   };
-
+  bitumen
   // Only show full skeleton on initial empty load
-  if (isLoading && orders.length === 0) {
+  if (isLoading && (!orders || orders.length === 0)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
@@ -79,8 +87,9 @@ export function OrdersTable({
   return (
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && orders.length > 0 ? 'opacity-60' : 'opacity-100'}`}>
       {/* Filters Section */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-panel p-4 rounded-xl">
-        <div className="relative w-full md:max-w-xs">
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between glass-panel p-4 rounded-xl">
+        <div className="relative w-full lg:max-w-xs">
+
           <input
             type="text"
             placeholder="Search records..."
@@ -94,12 +103,11 @@ export function OrdersTable({
             </div>
           )}
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <select
             value={paymentFilter}
             onChange={(e) => onPaymentFilterChange(e.target.value as PaymentStatusFilter)}
-            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
+            className="flex-1 lg:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
           >
             <option value="all">Verification Status</option>
             <option value="verified">Verified</option>
@@ -109,7 +117,7 @@ export function OrdersTable({
           <select
             value={typeFilter}
             onChange={(e) => onTypeFilterChange(e.target.value)}
-            className="flex-1 md:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
+            className="flex-1 lg:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
           >
             <option value="all">All Types</option>
             <option value="10 Months">10 Months</option>
@@ -120,76 +128,91 @@ export function OrdersTable({
             variant="ghost"
             size="sm"
             onClick={clearFilters}
-            className="w-full md:w-auto hover:bg-primary/5 text-muted-foreground"
+            className="w-full lg:w-auto hover:bg-primary/5 text-muted-foreground"
           >
             Clear Filters
           </Button>
         </div>
       </div>
 
-      {/* Mobile Card View (Hidden on Desktop) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
-        {orders.length === 0 ? (
+      {/* Mobile/Tablet Card View (Hidden on large screens) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {(!orders || orders.length === 0) ? (
           <div className="col-span-full py-12 text-center premium-card">
             <p className="text-muted-foreground">No records found</p>
           </div>
         ) : (
-          orders.map((order) => (
-            <div key={order.id} className="premium-card p-4 space-y-3 relative overflow-hidden group">
-              {order.type === '12 Months' && (
-                <div className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter type-badge-12months rounded-bl-lg">
-                  12-Month Priority
-                </div>
-              )}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-mono text-[10px] font-bold text-primary/60">{order.receipt_no}</p>
-                  <h3 className="font-bold text-lg leading-tight mt-0.5">{order.name}</h3>
-                  <p className="text-sm text-muted-foreground">{order.number}</p>
-                  {order.customer_address && (
-                    <p className="text-xs text-muted-foreground mt-1">{order.customer_address}</p>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="font-black text-lg text-primary">
-                    {formatCurrency(order.value)}
-                  </div>
-                  <div className="flex border-none items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Verified</span>
-                    <input
-                      type="checkbox"
-                      checked={order.payment_verified}
-                      onChange={(e) => toggleFlag.mutate({
-                        orderId: order.id,
-                        field: 'payment_verified',
-                        value: e.target.checked,
-                        order: order
-                      })}
-                      disabled={toggleFlag.isPending}
-                      className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all active:scale-90"
-                    />
-                  </div>
-                </div>
-              </div>
+          orders.map((order) => {
+            if (!order) return null;
 
-              <div className="pt-3 border-t flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Scheme / District</span>
-                  <span className="text-sm font-medium">{order.scheme} • <span className="text-muted-foreground">{order.district}</span></span>
+            const isVerified = Array.isArray(order.monthly_payments) &&
+              order.monthly_payments.some(p => p?.month_name === monthName && p?.payment_status === 'Completed');
+
+            return (
+              <div key={order.id || Math.random().toString()} className="premium-card p-4 space-y-3 relative overflow-hidden group">
+                {(order.type === '12 Months') && (
+                  <div className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter type-badge-12months rounded-bl-lg">
+                    12-Month Priority
+                  </div>
+                )}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-mono text-[10px] font-bold text-primary/60">{order.receipt_no || 'No Receipt'}</p>
+                    <h3 className="font-bold text-lg leading-tight mt-0.5">{order.name || 'Unknown'}</h3>
+                    <p className="text-sm text-muted-foreground">{order.number || 'No Number'}</p>
+                    {order.customer_address && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{order.customer_address}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="font-black text-lg text-primary">
+                      {formatCurrency(order.value || 0)}
+                    </div>
+                    <div className="flex border-none items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">Verified</span>
+                      <input
+                        type="checkbox"
+                        checked={isVerified}
+                        onChange={(e) => {
+                          if (order.id) {
+                            toggleFlag.mutate({
+                              orderId: order.id,
+                              field: 'payment_verified',
+                              value: e.target.checked,
+                              order: order,
+                              monthName
+                            });
+                          }
+                        }}
+                        disabled={toggleFlag.isPending}
+                        className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all active:scale-90"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Payment</span>
-                  <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full">{order.payment_mode || 'N/A'}</span>
+
+                <div className="pt-3 border-t flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Scheme / District</span>
+                    <span className="text-sm font-medium">
+                      {order.scheme || 'N/A'} • <span className="text-muted-foreground">{order.district || 'N/A'}</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Payment</span>
+                    <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full">{order.payment_mode || 'N/A'}</span>
+                  </div>
+                  {order.id && <OrderActions order={order} />}
                 </div>
-                <OrderActions order={order} />
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* Desktop Table View (Hidden on Mobile) */}
-      <div className="hidden md:block premium-card overflow-hidden">
+      {/* Desktop Table View (Visible only on large screens) */}
+      <div className="hidden lg:block premium-card overflow-hidden">
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -251,12 +274,13 @@ export function OrdersTable({
                     <TableCell className="text-center py-4">
                       <input
                         type="checkbox"
-                        checked={order.payment_verified}
+                        checked={order.monthly_payments?.some(p => p.month_name === monthName && p.payment_status === 'Completed')}
                         onChange={(e) => toggleFlag.mutate({
                           orderId: order.id,
                           field: 'payment_verified',
                           value: e.target.checked,
-                          order: order
+                          order: order,
+                          monthName
                         })}
                         disabled={toggleFlag.isPending}
                         className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all hover:scale-110 active:scale-90"
@@ -291,7 +315,7 @@ export function OrdersTable({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                {Number.isFinite(totalPages) && Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                   // Simplified pagination: showing first 5 pages for now
                   return (
                     <Button
