@@ -1,0 +1,43 @@
+﻿
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+node.exe : 
+Browserslist: browsers 
+data (caniuse-lite) is 
+8 months old. Please 
+run:
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : (Browserslist: b.   
+ ..ld. Please run::S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+  npx update-browserslis
+t-db@latest
+  Why you should do it 
+regularly: https://githu
+b.com/browserslist/updat
+e-db#readme
+[32mΓ£ô[39m 1784 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.97 kB[22m[1m[22m[2m Γöé gzip:   0.45 kB[22m
+[2mdist/[22m[35massets/index-D4mHz2HF.css  [39m[1m[2m 70.93 kB[22m[1m[22m[2m Γöé gzip:  12.00 kB[22m
+[2mdist/[22m[36massets/index-syCULDYJ.js   [39m[1m[2m310.63 kB[22m[1m[22m[2m Γöé gzip: 100.07 kB[22m
+[2mdist/[22m[36massets/Index-DeNh_Enl.js   [39m[1m[2m384.81 kB[22m[1m[22m[2m Γöé gzip: 105.54 kB[22m
+[32mΓ£ô built in 4.13s[39m

@@ -67,7 +67,6 @@ export function OrdersTable({
       maximumFractionDigits: 0,
     }).format(value);
   };
-  bitumen
   // Only show full skeleton on initial empty load
   if (isLoading && (!orders || orders.length === 0)) {
     return (

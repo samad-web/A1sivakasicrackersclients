@@ -1,0 +1,68 @@
+﻿
+> vite_react_shadcn_ts@0.0.0 lint
+> eslint .
+
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\dashboard\OrderForm.tsx
+  141:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\dashboard\OrdersTable.tsx
+  70:3  error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\dashboard\StatusBadge.tsx
+  33:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  46:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\badge.tsx
+  29:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\button.tsx
+  47:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\command.tsx
+  24:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\form.tsx
+  129:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\navigation-menu.tsx
+  111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\sidebar.tsx
+  636:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\sonner.tsx
+  27:19  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\textarea.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\components\ui\toggle.tsx
+  37:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\hooks\useOrders.ts
+   19:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   20:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   63:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  194:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  215:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  229:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  231:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  235:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  252:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  275:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mas20\Desktop\work\A1_Phase2\src\scripts\migrate-sheets.ts
+    37:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  9209:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\mas20\Desktop\work\A1_Phase2\tailwind.config.ts
+  120:13  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+Γ£û 31 problems (22 errors, 9 warnings)
+

@@ -15,9 +15,9 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
     queryKey: ['orders', filters, page, pageSize],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let query = (supabase
-        .from('orders' as any)
-        .select('*, monthly_payments!inner(*)', { count: 'exact' }) as any);
+      let query = supabase
+        .from('orders')
+        .select('*, monthly_payments!inner(*)', { count: 'exact' });
 
       // Apply Month Filter from monthly_payments table
       query = query.eq('monthly_payments.month_name', filters.monthName);
@@ -60,15 +60,21 @@ export function useOrderStats(monthName: string) {
     queryFn: async () => {
       // Fetch only needed columns for ALL rows in that month to calculate accurate totals
       const { data, error } = await supabase
-        .from('monthly_payments' as any)
+        .from('monthly_payments')
         .select('payment_status, orders(value, invoice_url)')
-        .eq('month_name', monthName) as any;
+        .eq('month_name', monthName);
 
       if (error) throw error;
 
-      const totalRevenue = data.reduce((sum, item: any) => sum + Number(item.orders?.value || 0), 0);
-      const paidOrders = data.filter((item) => item.payment_status === 'Completed').length;
-      const invoicedOrders = data.filter((item: any) => !!item.orders?.invoice_url).length;
+      const totalRevenue = data?.reduce((sum, item) => {
+        const order = item.orders as unknown as { value: number } | null;
+        return sum + Number(order?.value || 0);
+      }, 0) || 0;
+      const paidOrders = data?.filter((item) => item.payment_status === 'Completed').length || 0;
+      const invoicedOrders = data?.filter((item) => {
+        const order = item.orders as unknown as { invoice_url: string | null } | null;
+        return !!order?.invoice_url;
+      }).length || 0;
 
       return {
         totalOrders: data.length,
@@ -101,7 +107,7 @@ export function useToggleOrderFlag() {
         if (!monthName) throw new Error('Month name is required to toggle payment status');
 
         const { error } = await supabase
-          .from('monthly_payments' as any)
+          .from('monthly_payments')
           .update({
             payment_status: value ? 'Completed' : 'Pending',
             payment_date: value ? new Date().toISOString() : null
@@ -178,7 +184,7 @@ export function useToggleOrderFlag() {
       queryClient.invalidateQueries({ queryKey: ['order-stats'] });
       toast.success('Record updated');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to update record');
       console.error(error);
     },
@@ -191,20 +197,20 @@ export function useUpsertOrder() {
   return useMutation({
     mutationFn: async (order: Partial<Order>) => {
       // Remove legacy fields if present
-      const { monthly_payments, ...cleanOrder } = order as any;
+      const { monthly_payments: _, ...cleanOrder } = order as Record<string, unknown>;
       delete cleanOrder.current_month;
       delete cleanOrder.payment_verified;
 
       if (order.id) {
         const { error } = await supabase
           .from('orders')
-          .update(cleanOrder)
+          .update(cleanOrder as any) // Use as any for partial updates with dynamic cleanOrder
           .eq('id', order.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('orders')
-          .insert([cleanOrder]);
+          .insert([cleanOrder as any]);
         if (error) throw error;
       }
     },
@@ -212,7 +218,7 @@ export function useUpsertOrder() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Order saved successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to save order');
       console.error(error);
     },
@@ -226,13 +232,13 @@ export function useDeleteOrder() {
     mutationFn: async (orderId: string) => {
       // Check if locked before deletion (if any month is Completed)
       const { data, error: fetchError } = await supabase
-        .from('monthly_payments' as any)
+        .from('monthly_payments')
         .select('payment_status')
-        .eq('order_id', orderId) as any;
+        .eq('order_id', orderId);
 
       if (fetchError) throw fetchError;
 
-      const isLocked = (data as any[])?.some(p => p.payment_status === 'Completed');
+      const isLocked = (data as { payment_status: string }[])?.some(p => p.payment_status === 'Completed');
 
       if (isLocked) {
         throw new Error('Cannot delete a record with completed payments');
@@ -249,7 +255,7 @@ export function useDeleteOrder() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Record deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete record');
       console.error(error);
     },
@@ -272,7 +278,7 @@ export function useDeleteAllOrders() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('All records deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete all records');
       console.error(error);
     },

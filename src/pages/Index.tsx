@@ -115,14 +115,16 @@ const Index = () => {
                     Add Record
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md premium-card border-none">
-                  <DialogHeader>
+                <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col premium-card border-none">
+                  <DialogHeader className="flex-shrink-0">
                     <DialogTitle className="text-2xl font-black text-gradient">Add New Record</DialogTitle>
                     <DialogDescription>
                       Enter the details for the new order below.
                     </DialogDescription>
                   </DialogHeader>
-                  <OrderForm />
+                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                    <OrderForm />
+                  </div>
                 </DialogContent>
               </Dialog>
 

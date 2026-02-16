@@ -25,10 +25,10 @@ export type Database = {
           secondary_number: string | null
           type: string
           district: string
-          current_month: string
+          current_month: string // Keep for now as it's in the DB
           customer_address: string | null
           payment_mode: string | null
-          payment_verified: boolean
+          payment_verified: boolean // Keep for now
           order_completed: boolean
           invoice_url: string | null
           created_at: string
@@ -44,7 +44,7 @@ export type Database = {
           secondary_number?: string | null
           type: string
           district: string
-          current_month: string
+          current_month?: string
           customer_address?: string | null
           payment_mode?: string | null
           payment_verified?: boolean
@@ -71,6 +71,127 @@ export type Database = {
           invoice_url?: string | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      monthly_payments: {
+        Row: {
+          id: string
+          order_id: string
+          month_name: string
+          payment_status: string
+          payment_date: string | null
+          payment_amount: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          month_name: string
+          payment_status?: string
+          payment_date?: string | null
+          payment_amount?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          month_name?: string
+          payment_status?: string
+          payment_date?: string | null
+          payment_amount?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_payments_order_fk"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      monthly_archives: {
+        Row: {
+          id: string
+          archive_date: string
+          order_id: string
+          month_name: string
+          payment_status: string
+          payment_date: string | null
+          payment_amount: number
+          notes: string | null
+          archived_at: string
+        }
+        Insert: {
+          id?: string
+          archive_date: string
+          order_id: string
+          month_name: string
+          payment_status: string
+          payment_date?: string | null
+          payment_amount?: number
+          notes?: string | null
+          archived_at?: string
+        }
+        Update: {
+          id?: string
+          archive_date?: string
+          order_id?: string
+          month_name?: string
+          payment_status?: string
+          payment_date?: string | null
+          payment_amount?: number
+          notes?: string | null
+          archived_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_archives_order_fk"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      monthly_reset_logs: {
+        Row: {
+          id: string
+          reset_month: string
+          archived_count: number
+          reset_count: number
+          status: string
+          error_message: string | null
+          execution_time_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reset_month: string
+          archived_count?: number
+          reset_count?: number
+          status: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          reset_month?: string
+          archived_count?: number
+          reset_count?: number
+          status?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          created_at?: string
         }
         Relationships: []
       }

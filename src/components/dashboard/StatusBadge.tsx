@@ -29,31 +29,3 @@ export function StatusBadge({ variant, children, className }: StatusBadgeProps) 
     </span>
   );
 }
-
-export function getPaymentStatusVariant(status: string): BadgeVariant {
-  switch (status) {
-    case 'paid':
-      return 'success';
-    case 'partial':
-      return 'warning';
-    case 'unpaid':
-      return 'danger';
-    default:
-      return 'muted';
-  }
-}
-
-export function getOrderStatusVariant(status: string): BadgeVariant {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'processing':
-      return 'info';
-    case 'pending':
-      return 'warning';
-    case 'cancelled':
-      return 'danger';
-    default:
-      return 'muted';
-  }
-}

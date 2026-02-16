@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../integrations/supabase/types';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -10,7 +11,7 @@ if (!supabaseUrl || !supabaseKey) {
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
 /**
  * MAPPING CONFIGURATION
@@ -34,7 +35,7 @@ const MONTH_COLUMNS = [
  * PASTE YOUR DATA HERE AS AN ARRAY OF OBJECTS
  * Requirement: Keys must match the Sheet Headers you provided.
  */
-const DATA_TO_IMPORT: any[] = [
+const DATA_TO_IMPORT: Record<string, any>[] = [
     [
         {
             "Receipt No": "266",
@@ -9206,8 +9207,8 @@ async function migrate() {
 
         // 3. Upsert Monthly Payments
         const { error: paymentError } = await supabase
-            .from('monthly_payments' as any) // Use 'as any' because types might be outdated
-            .upsert(monthlyPayments, { onConflict: 'order_id,month_name' });
+            .from('monthly_payments')
+            .upsert(monthlyPayments as any, { onConflict: 'order_id,month_name' });
 
         if (paymentError) {
             console.error(`Error upserting payments for ${baseOrder.receipt_no}:`, JSON.stringify(paymentError, null, 2));

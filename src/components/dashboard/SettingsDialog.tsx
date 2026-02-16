@@ -26,26 +26,11 @@ import { toast } from 'sonner';
 import { useDeleteAllOrders } from '@/hooks/useOrders';
 
 export function SettingsDialog() {
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [paymentWebhookUrl, setPaymentWebhookUrl] = useState('');
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   const deleteAllMutation = useDeleteAllOrders();
-
-  useEffect(() => {
-    const savedWebhook = localStorage.getItem('n8n_webhook_url');
-    if (savedWebhook) setWebhookUrl(savedWebhook);
-    setPaymentWebhookUrl('https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook');
-  }, []);
-
-  const handleSave = () => {
-    localStorage.setItem('n8n_webhook_url', webhookUrl);
-    // Remove legacy local override if it exists
-    localStorage.removeItem('n8n_payment_webhook_url');
-    toast.success('Configuration saved');
-  };
 
   const handleDeleteAll = () => {
     if (deleteConfirmation === 'DELETE') {
@@ -58,7 +43,6 @@ export function SettingsDialog() {
     }
   };
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -67,66 +51,30 @@ export function SettingsDialog() {
           Settings
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Dashboard Settings</DialogTitle>
           <DialogDescription>
-            Configure your n8n webhooks and manage data
+            Manage your dashboard data and system settings.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 pt-4">
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">n8n Webhook Configuration</h3>
-
-            <div className="space-y-2">
-              <Label htmlFor="payment-webhook">Payment & Invoice Webhook URL</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <RefreshCw className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="payment-webhook"
-                    readOnly
-                    value="https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook"
-                    className="pl-9 bg-muted"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Triggered for payment verification and invoice generation events.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webhook">General/Import Webhook URL</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Webhook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="webhook"
-                    placeholder="https://your-n8n-instance.com/webhook/..."
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Webhook for general data operations or imports.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-medium">Data Management</h3>
 
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-medium text-destructive mb-4">Danger Zone</h4>
+            <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+              <h4 className="text-sm font-medium text-destructive mb-2 flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                Danger Zone
+              </h4>
+              <p className="text-xs text-muted-foreground mb-4">
+                Permanently delete all order records from the database. This action cannot be undone.
+              </p>
 
               <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full sm:w-auto">
-                    <Trash2 className="h-4 w-4 mr-2" />
+                  <Button variant="destructive" className="w-full">
                     Delete All Records
                   </Button>
                 </AlertDialogTrigger>
@@ -161,11 +109,6 @@ export function SettingsDialog() {
               </AlertDialog>
             </div>
           </div>
-
-          <Button onClick={handleSave} className="w-full">
-            <Save className="h-4 w-4 mr-2" />
-            Save Configuration
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
