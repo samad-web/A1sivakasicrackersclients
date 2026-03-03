@@ -88,14 +88,16 @@ export function OrderActions({ order }: OrderActionsProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Record - {order.receipt_no}</DialogTitle>
               <DialogDescription>
                 Make changes to the order details below.
               </DialogDescription>
             </DialogHeader>
-            <OrderForm order={order} onSuccess={() => setIsOpen(false)} />
+            <div className="py-2">
+              <OrderForm order={order} onSuccess={() => setIsOpen(false)} />
+            </div>
           </DialogContent>
         </Dialog>
 

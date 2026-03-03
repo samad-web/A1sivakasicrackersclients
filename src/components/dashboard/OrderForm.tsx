@@ -118,7 +118,7 @@ export function OrderForm({ order, onSuccess, currentMonth }: OrderFormProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -140,7 +140,7 @@ export function OrderForm({ order, onSuccess, currentMonth }: OrderFormProps) {
                             <FormItem>
                                 <FormLabel>Customer Name</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="John Doe" {...field} />
+                                    <Input placeholder="Ramesh Kumar" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
