@@ -41,9 +41,10 @@ const formSchema = z.object({
 interface OrderFormProps {
     order?: Order;
     onSuccess?: () => void;
+    currentMonth?: string;
 }
 
-export function OrderForm({ order, onSuccess }: OrderFormProps) {
+export function OrderForm({ order, onSuccess, currentMonth }: OrderFormProps) {
     const upsertOrder = useUpsertOrder();
 
     const parseAddress = (fullAddress: string | null | undefined) => {
@@ -95,18 +96,18 @@ export function OrderForm({ order, onSuccess }: OrderFormProps) {
             values.pincode ? `Pin - ${values.pincode}` : ''
         ].filter(Boolean).join(', ');
 
-        const submissionData = {
+        const payload = {
             ...values,
             customer_address: fullAddress,
-            address_line1: undefined,
-            address_line2: undefined,
-            city: undefined,
-            pincode: undefined,
-            state: undefined,
-        };
+            current_month: order?.current_month || currentMonth,
+        } as Partial<Order>;
+
+        if (order?.id) {
+            payload.id = order.id;
+        }
 
         upsertOrder.mutate(
-            { ...submissionData, id: order?.id } as Partial<Order>,
+            payload,
             {
                 onSuccess: () => {
                     onSuccess?.();

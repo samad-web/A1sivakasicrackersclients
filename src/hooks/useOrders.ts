@@ -47,7 +47,7 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
       if (error) throw error;
 
       return {
-        data: data as Order[],
+        data: (data as unknown) as Order[],
         count: count || 0
       };
     },
@@ -196,15 +196,25 @@ export function useUpsertOrder() {
 
   return useMutation({
     mutationFn: async (order: Partial<Order>) => {
-      // Remove legacy fields if present
-      const { monthly_payments: _, ...cleanOrder } = order as Record<string, unknown>;
-      delete cleanOrder.current_month;
-      delete cleanOrder.payment_verified;
+      // Remove legacy and UI-only fields if present
+      const { monthly_payments: _, ...tempOrder } = order as Record<string, unknown>;
+
+      // List of fields that are definitely NOT in the database
+      const uiOnlyFields = [
+        'payment_verified',
+      ];
+
+      const cleanOrder: Record<string, any> = {};
+      Object.keys(tempOrder).forEach(key => {
+        if (!uiOnlyFields.includes(key) && tempOrder[key] !== undefined) {
+          cleanOrder[key] = tempOrder[key];
+        }
+      });
 
       if (order.id) {
         const { error } = await supabase
           .from('orders')
-          .update(cleanOrder as any) // Use as any for partial updates with dynamic cleanOrder
+          .update(cleanOrder as any)
           .eq('id', order.id);
         if (error) throw error;
       } else {

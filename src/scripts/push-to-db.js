@@ -22,17 +22,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const JSON_PATH = './25 and 26 Ckers Customer  - Automation.json';
 
 const MONTH_COLUMNS = [
-    { name: 'November', month: '2025-11' },
-    { name: 'December', month: '2025-12' },
-    { name: 'January', month: '2026-01' },
-    { name: 'Febraury', month: '2026-02' },
-    { name: 'March', month: '2026-03' },
-    { name: 'April', month: '2026-04' },
-    { name: 'May', month: '2026-05' },
-    { name: 'June', month: '2026-06' },
-    { name: 'July', month: '2026-07' },
-    { name: 'August', month: '2026-08' },
-    { name: 'September', month: '2026-09' },
+    { jsonKey: 'November', dbName: 'November' },
+    { jsonKey: 'December', dbName: 'December' },
+    { jsonKey: 'January', dbName: 'January' },
+    { jsonKey: 'Febraury', dbName: 'February' },
+    { jsonKey: 'March', dbName: 'March' },
+    { jsonKey: 'April', dbName: 'April' },
+    { jsonKey: 'May', dbName: 'May' },
+    { jsonKey: 'June', dbName: 'June' },
+    { jsonKey: 'July', dbName: 'July' },
+    { jsonKey: 'August', dbName: 'August' },
+    { jsonKey: 'September', dbName: 'September' },
 ];
 
 async function pushData() {
@@ -40,10 +40,8 @@ async function pushData() {
     const rawData = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
     console.log(`Processing ${rawData.length} customers...`);
 
-    const allRecords = [];
-
     for (const row of rawData) {
-        const baseData = {
+        const baseOrder = {
             receipt_no: String(row['Receipt No'] || '').trim(),
             scheme: String(row['Scheme'] || '').trim(),
             value: Number(row['Value']) || 0,
@@ -52,36 +50,48 @@ async function pushData() {
             secondary_number: row['Secondary Number'] ? String(row['Secondary Number']).trim() : null,
             type: String(row['Type'] || '').trim(),
             district: String(row['District'] || '').trim(),
+            current_month: '2026-02', // Standard month to satisfy legacy current_month logic
         };
 
-        if (!baseData.receipt_no && !baseData.name) continue;
+        if (!baseOrder.receipt_no && !baseOrder.name) continue;
 
-        for (const col of MONTH_COLUMNS) {
-            const status = String(row[col.name] || '').toLowerCase();
+        console.log(`Pushing order: ${baseOrder.name} (${baseOrder.receipt_no})...`);
+
+        // 1. Upsert Order
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .upsert(baseOrder, { onConflict: 'receipt_no,name,number' })
+            .select('id')
+            .single();
+
+        if (orderError) {
+            console.error(`Error upserting order ${baseOrder.receipt_no}:`, JSON.stringify(orderError, null, 2));
+            continue;
+        }
+
+        const orderId = orderData.id;
+
+        // 2. Prepare Monthly Payments
+        const monthlyPayments = MONTH_COLUMNS.map(col => {
+            const status = String(row[col.jsonKey] || '').toLowerCase();
             const isCompleted = status.includes('completed') || status === 'paid' || status === 'yes' || status === 'v';
 
-            allRecords.push({
-                ...baseData,
-                current_month: col.month,
-                payment_verified: isCompleted,
-                order_completed: isCompleted,
-            });
-        }
-    }
+            return {
+                order_id: orderId,
+                month_name: col.dbName,
+                payment_status: isCompleted ? 'Completed' : 'Pending',
+                payment_date: isCompleted ? new Date().toISOString() : null,
+                updated_at: new Date().toISOString()
+            };
+        });
 
-    console.log(`Prepared ${allRecords.length} records. Starting batch upload...`);
+        // 3. Upsert Monthly Payments in batch for this order
+        const { error: paymentError } = await supabase
+            .from('monthly_payments')
+            .upsert(monthlyPayments, { onConflict: 'order_id,month_name' });
 
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < allRecords.length; i += BATCH_SIZE) {
-        const batch = allRecords.slice(i, i + BATCH_SIZE);
-        console.log(`Uploading batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allRecords.length / BATCH_SIZE)}...`);
-
-        const { error } = await supabase
-            .from('orders')
-            .upsert(batch, { onConflict: 'receipt_no,current_month,name,number' });
-
-        if (error) {
-            console.error('Error in batch:', JSON.stringify(error, null, 2));
+        if (paymentError) {
+            console.error(`Error upserting payments for ${baseOrder.receipt_no}:`, JSON.stringify(paymentError, null, 2));
         }
     }
 

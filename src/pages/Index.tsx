@@ -123,7 +123,7 @@ const Index = () => {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                    <OrderForm />
+                    <OrderForm currentMonth={currentMonth} />
                   </div>
                 </DialogContent>
               </Dialog>

@@ -28,7 +28,13 @@ export interface Order {
   secondary_number: string | null;
   type: string;
   district: string;
+  current_month: string | null;
   customer_address: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  pincode: string | null;
+  state: string | null;
   payment_mode: string | null;
   order_completed: boolean;
   invoice_url: string | null;
