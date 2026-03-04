@@ -132,6 +132,14 @@ export function useToggleOrderFlag() {
 
         if (error) throw error;
 
+        // Sync with orders table
+        const { error: syncError } = await supabase
+          .from('orders')
+          .update({ payment_verified: value })
+          .eq('id', orderId);
+
+        if (syncError) throw syncError;
+
         // Trigger Webhook if verified
         if (value === true && order) {
           const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
