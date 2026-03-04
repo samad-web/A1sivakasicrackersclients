@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 export interface OrdersFilters {
   monthName: string; // e.g. 'January'
+  cycleYear: number; // e.g. 2025
   searchQuery?: string;
   paymentFilter?: PaymentStatusFilter;
   typeFilter?: string;
@@ -19,8 +20,15 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         .from('orders')
         .select('*, monthly_payments!inner(*)', { count: 'exact' });
 
-      // Apply Month Filter from monthly_payments table
-      query = query.eq('monthly_payments.month_name', filters.monthName);
+      // Apply Month and Cycle Filter from monthly_payments table
+      query = query
+        .eq('monthly_payments.month_name', filters.monthName);
+
+      // Filter by creation date range to match the cycle year
+      // A cycle starts in November of cycleYear and ends in September of cycleYear + 1
+      const startDate = new Date(filters.cycleYear, 10, 1).toISOString(); // Nov 1
+      const endDate = new Date(filters.cycleYear + 1, 9, 1).toISOString(); // Oct 1 (exclusive)
+      query = query.gte('created_at', startDate).lt('created_at', endDate);
 
       // Apply Remote Search
       if (filters.searchQuery) {
@@ -54,15 +62,22 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
   });
 }
 
-export function useOrderStats(monthName: string) {
+export function useOrderStats(monthName: string, cycleYear: number) {
   return useQuery({
-    queryKey: ['order-stats', monthName],
+    queryKey: ['order-stats', monthName, cycleYear],
     queryFn: async () => {
-      // Fetch only needed columns for ALL rows in that month to calculate accurate totals
-      const { data, error } = await supabase
+      const query = supabase
         .from('monthly_payments')
-        .select('payment_status, orders(value, invoice_url)')
+        .select('payment_status, orders!inner(value, invoice_url, created_at)')
         .eq('month_name', monthName);
+
+      // Filter statistics by the cycle year's creation date range
+      const startDate = new Date(cycleYear, 10, 1).toISOString();
+      const endDate = new Date(cycleYear + 1, 9, 1).toISOString();
+
+      const { data, error } = await query
+        .gte('orders.created_at', startDate)
+        .lt('orders.created_at', endDate);
 
       if (error) throw error;
 

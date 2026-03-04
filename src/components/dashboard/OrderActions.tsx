@@ -32,9 +32,10 @@ import { useDeleteOrder } from '@/hooks/useOrders';
 
 interface OrderActionsProps {
   order: Order;
+  isReadOnly?: boolean;
 }
 
-export function OrderActions({ order }: OrderActionsProps) {
+export function OrderActions({ order, isReadOnly }: OrderActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const deleteMutation = useDeleteOrder();
@@ -64,7 +65,7 @@ export function OrderActions({ order }: OrderActionsProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DialogTrigger asChild>
-                <DropdownMenuItem disabled={isLocked}>
+                <DropdownMenuItem disabled={isLocked || isReadOnly}>
                   <Edit2 className="mr-2 h-4 w-4" />
                   Edit Record
                 </DropdownMenuItem>
@@ -80,7 +81,7 @@ export function OrderActions({ order }: OrderActionsProps) {
               </DropdownMenuItem>
 
               <AlertDialogTrigger asChild>
-                <DropdownMenuItem disabled={isLocked} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem disabled={isLocked || isReadOnly} className="text-destructive focus:text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete Record
                 </DropdownMenuItem>

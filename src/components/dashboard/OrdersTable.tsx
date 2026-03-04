@@ -29,6 +29,7 @@ interface OrdersTableProps {
   typeFilter: string;
   onTypeFilterChange: (type: string) => void;
   monthName: string;
+  isReadOnly?: boolean;
 }
 
 export function OrdersTable({
@@ -47,6 +48,7 @@ export function OrdersTable({
   typeFilter,
   onTypeFilterChange,
   monthName,
+  isReadOnly,
 }: OrdersTableProps) {
   const toggleFlag = useToggleOrderFlag();
   const safePageSize = pageSize || 50;
@@ -183,7 +185,7 @@ export function OrdersTable({
                             });
                           }
                         }}
-                        disabled={toggleFlag.isPending}
+                        disabled={toggleFlag.isPending || isReadOnly}
                         className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all active:scale-90"
                       />
                     </div>
@@ -201,7 +203,7 @@ export function OrdersTable({
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">Payment</span>
                     <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full">{order.payment_mode || 'N/A'}</span>
                   </div>
-                  {order.id && <OrderActions order={order} />}
+                  {order.id && <OrderActions order={order} isReadOnly={isReadOnly} />}
                 </div>
               </div>
             );
@@ -281,12 +283,12 @@ export function OrdersTable({
                           order: order,
                           monthName
                         })}
-                        disabled={toggleFlag.isPending}
+                        disabled={toggleFlag.isPending || isReadOnly}
                         className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all hover:scale-110 active:scale-90"
                       />
                     </TableCell>
                     <TableCell className="text-right py-4 pr-6">
-                      <OrderActions order={order} />
+                      <OrderActions order={order} isReadOnly={isReadOnly} />
                     </TableCell>
                   </TableRow>
                 ))

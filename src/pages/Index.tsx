@@ -16,13 +16,17 @@ import {
 import { useOrders, useOrderStats } from '@/hooks/useOrders';
 import { PaymentStatusFilter } from '@/types/order';
 import { useResponsivePageSize } from '@/hooks/use-mobile';
+import { getCurrentCycleYear, getCycleRange, getAvailableCycles, isCycleArchived } from '@/utils/cycle';
 
 
 const Index = () => {
+  const [selectedCycleYear, setSelectedCycleYear] = useState(() => getCurrentCycleYear());
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  const isReadOnly = useMemo(() => isCycleArchived(selectedCycleYear), [selectedCycleYear]);
 
   // Performance Optimization: Moving filter/pagination state to Index
   const [page, setPage] = useState(0);
@@ -53,29 +57,34 @@ const Index = () => {
     isFetching
   } = useOrders({
     monthName,
+    cycleYear: selectedCycleYear,
     searchQuery,
     paymentFilter,
     typeFilter
   }, page, pageSize || 50);
 
 
-  const { data: stats } = useOrderStats(monthName);
+  const { data: stats } = useOrderStats(monthName, selectedCycleYear);
 
   const months = useMemo(() => {
-    const options = [];
-    const d = new Date();
-    for (let i = 0; i < 12; i++) {
-      const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-      const val = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
-      const label = m.toLocaleString('default', { month: 'long', year: 'numeric' });
-      options.push({ val, label });
-    }
-    return options;
-  }, []);
+    return getCycleRange(selectedCycleYear);
+  }, [selectedCycleYear]);
+
+  const availableCycles = useMemo(() => getAvailableCycles(), []);
 
   const handleMonthChange = (val: string) => {
     setCurrentMonth(val);
     setPage(0); // Reset pagination on month change
+  };
+
+  const handleCycleChange = (val: string) => {
+    const year = parseInt(val);
+    setSelectedCycleYear(year);
+
+    // When switching cycle, pick a reasonable default month (e.g. November of the new cycle)
+    const newCycleMonths = getCycleRange(year);
+    setCurrentMonth(newCycleMonths[0].val);
+    setPage(0);
   };
 
   return (
@@ -99,6 +108,21 @@ const Index = () => {
               <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-500" />
                 <select
+                  value={selectedCycleYear}
+                  onChange={(e) => handleCycleChange(e.target.value)}
+                  className="relative bg-background border-none ring-1 ring-border rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm"
+                >
+                  {availableCycles.map(c => (
+                    <option key={c.startYear} value={c.startYear}>
+                      {c.label} {c.isArchived ? '(Archived)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                <select
                   value={currentMonth}
                   onChange={(e) => handleMonthChange(e.target.value)}
                   className="relative bg-background border-none ring-1 ring-border rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm"
@@ -109,24 +133,26 @@ const Index = () => {
                 </select>
               </div>
 
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="btn-premium shadow-md shadow-primary/20" size="sm">
-                    Add Record
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col premium-card border-none">
-                  <DialogHeader className="flex-shrink-0">
-                    <DialogTitle className="text-2xl font-black text-gradient">Add New Record</DialogTitle>
-                    <DialogDescription>
-                      Enter the details for the new order below.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                    <OrderForm currentMonth={currentMonth} />
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {!isReadOnly && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="btn-premium shadow-md shadow-primary/20" size="sm">
+                      Add Record
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col premium-card border-none">
+                    <DialogHeader className="flex-shrink-0">
+                      <DialogTitle className="text-2xl font-black text-gradient">Add New Record</DialogTitle>
+                      <DialogDescription>
+                        Enter the details for the new order below for {monthName}.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                      <OrderForm currentMonth={monthName} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
 
               <Button
                 variant="outline"
@@ -173,6 +199,7 @@ const Index = () => {
             typeFilter={typeFilter}
             onTypeFilterChange={(t) => { setTypeFilter(t); setPage(0); }}
             monthName={monthName}
+            isReadOnly={isReadOnly}
           />
         </div>
       </main>
