@@ -200,7 +200,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_order_payment_verification: {
+        Args: {
+          p_order_id: string
+          p_month_name: string
+          p_is_verified: boolean
+        }
+        Returns: {
+          payment_updated_count: number
+          order_updated_count: number
+          order_id_sent: string
+          month_sent: string
+          is_verified_sent: boolean
+        } | null
+      }
     }
     Enums: {
       [_ in never]: never

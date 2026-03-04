@@ -121,24 +121,22 @@ export function useToggleOrderFlag() {
       if (field === 'payment_verified') {
         if (!monthName) throw new Error('Month name is required to toggle payment status');
 
-        const { error } = await supabase
-          .from('monthly_payments')
-          .update({
-            payment_status: value ? 'Completed' : 'Pending',
-            payment_date: value ? new Date().toISOString() : null
-          })
-          .eq('order_id', orderId)
-          .eq('month_name', monthName);
+        // Update monthly payment status via RPC
+        const { error: rpcError } = await supabase.rpc('update_order_payment_verification', {
+          p_order_id: orderId,
+          p_month_name: monthName,
+          p_is_verified: value
+        });
 
-        if (error) throw error;
+        if (rpcError) throw rpcError;
 
-        // Sync with orders table
-        const { error: syncError } = await supabase
+        // Ensure order master column is also updated
+        const { error: directError } = await supabase
           .from('orders')
           .update({ payment_verified: value })
           .eq('id', orderId);
 
-        if (syncError) throw syncError;
+        if (directError) throw directError;
 
         // Trigger Webhook if verified
         if (value === true && order) {
@@ -222,14 +220,9 @@ export function useUpsertOrder() {
       // Remove legacy and UI-only fields if present
       const { monthly_payments: _, ...tempOrder } = order as Record<string, unknown>;
 
-      // List of fields that are definitely NOT in the database
-      const uiOnlyFields = [
-        'payment_verified',
-      ];
-
       const cleanOrder: Record<string, any> = {};
       Object.keys(tempOrder).forEach(key => {
-        if (!uiOnlyFields.includes(key) && tempOrder[key] !== undefined) {
+        if (tempOrder[key] !== undefined) {
           cleanOrder[key] = tempOrder[key];
         }
       });

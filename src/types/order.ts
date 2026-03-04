@@ -36,6 +36,7 @@ export interface Order {
   pincode: string | null;
   state: string | null;
   payment_mode: string | null;
+  payment_verified: boolean;
   order_completed: boolean;
   invoice_url: string | null;
   created_at: string;
