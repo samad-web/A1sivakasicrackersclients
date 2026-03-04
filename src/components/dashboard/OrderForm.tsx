@@ -82,7 +82,7 @@ export function OrderForm({ order, onSuccess, currentMonth }: OrderFormProps) {
             payment_mode: order?.payment_mode || 'Gpay',
             scheme: order?.scheme || '',
             value: order?.value || 0,
-            type: order?.type || '10 Months',
+            type: order?.type || '10 Month',
             district: order?.district || '',
         },
     });
@@ -283,18 +283,27 @@ export function OrderForm({ order, onSuccess, currentMonth }: OrderFormProps) {
                         name="type"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Type</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select type" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="10 Months">10 Months</SelectItem>
-                                        <SelectItem value="12 Months">12 Months</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <FormLabel>Scheme Duration (Months)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        placeholder="10"
+                                        value={field.value.split(' ')[0] || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val && parseInt(val) > 0) {
+                                                field.onChange(`${val} Month`);
+                                            } else {
+                                                field.onChange("");
+                                            }
+                                        }}
+                                    />
+                                </FormControl>
+                                <div className="text-[10px] font-black text-primary/60 mt-1 uppercase tracking-widest flex justify-between">
+                                    <span>Selected: {field.value || 'None'}</span>
+                                    {field.value && <span className="animate-pulse">Active</span>}
+                                </div>
                                 <FormMessage />
                             </FormItem>
                         )}

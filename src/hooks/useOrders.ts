@@ -42,9 +42,9 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         query = query.neq('monthly_payments.payment_status', 'Completed');
       }
 
-      // Apply Type Filter
+      // Apply Type Filter (Partial match for backward compatibility with "Month" vs "Months")
       if (filters.typeFilter && filters.typeFilter !== 'all') {
-        query = query.eq('type', filters.typeFilter);
+        query = query.ilike('type', `${filters.typeFilter}%`);
       }
 
       // Sorting & Pagination

@@ -121,8 +121,8 @@ export function OrdersTable({
             className="flex-1 lg:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
           >
             <option value="all">All Types</option>
-            <option value="10 Months">10 Months</option>
-            <option value="12 Months">12 Months</option>
+            <option value="10 Month">10 Month</option>
+            <option value="12 Month">12 Month</option>
           </select>
 
           <Button
