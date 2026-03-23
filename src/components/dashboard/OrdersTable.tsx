@@ -28,6 +28,7 @@ interface OrdersTableProps {
   onPaymentFilterChange: (filter: PaymentStatusFilter) => void;
   typeFilter: string;
   onTypeFilterChange: (type: string) => void;
+  availableTypes?: string[];
   monthName: string;
   isReadOnly?: boolean;
 }
@@ -47,6 +48,7 @@ export function OrdersTable({
   onPaymentFilterChange,
   typeFilter,
   onTypeFilterChange,
+  availableTypes = [],
   monthName,
   isReadOnly,
 }: OrdersTableProps) {
@@ -121,8 +123,9 @@ export function OrdersTable({
             className="flex-1 lg:flex-none bg-background/50 border-none ring-1 ring-border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary transition-all shadow-sm"
           >
             <option value="all">All Types</option>
-            <option value="10 Month">10 Month</option>
-            <option value="12 Month">12 Month</option>
+            {availableTypes.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
 
           <Button

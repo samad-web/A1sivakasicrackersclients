@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useOrders, useOrderStats } from '@/hooks/useOrders';
+import { useOrders, useOrderStats, useDistinctTypes } from '@/hooks/useOrders';
 import { PaymentStatusFilter } from '@/types/order';
 import { useResponsivePageSize } from '@/hooks/use-mobile';
 import { getCurrentCycleYear, getCycleRange, getAvailableCycles, isCycleArchived } from '@/utils/cycle';
@@ -65,6 +65,7 @@ const Index = () => {
 
 
   const { data: stats } = useOrderStats(monthName, selectedCycleYear);
+  const { data: distinctTypes = [] } = useDistinctTypes(selectedCycleYear);
 
   const months = useMemo(() => {
     return getCycleRange(selectedCycleYear);
@@ -198,6 +199,7 @@ const Index = () => {
             onPaymentFilterChange={(f) => { setPaymentFilter(f); setPage(0); }}
             typeFilter={typeFilter}
             onTypeFilterChange={(t) => { setTypeFilter(t); setPage(0); }}
+            availableTypes={distinctTypes}
             monthName={monthName}
             isReadOnly={isReadOnly}
           />

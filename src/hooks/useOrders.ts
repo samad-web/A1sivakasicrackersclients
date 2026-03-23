@@ -62,6 +62,37 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
   });
 }
 
+export function useDistinctTypes(cycleYear: number) {
+  return useQuery({
+    queryKey: ['distinct-types', cycleYear],
+    queryFn: async () => {
+      const startDate = new Date(cycleYear, 10, 1).toISOString();
+      const endDate = new Date(cycleYear + 1, 9, 1).toISOString();
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('type')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate);
+
+      if (error) throw error;
+
+      // Normalize: "10 Months" / "10 Month" → "10 Month", then deduplicate
+      const normalized = (data || [])
+        .map(row => row.type)
+        .filter((t): t is string => !!t)
+        .map(t => t.replace(/\s*Months?\s*$/i, ' Month').trim());
+
+      const types = [...new Set(normalized)].sort((a, b) => {
+        return parseInt(a) - parseInt(b);
+      });
+
+      return types;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
 export function useOrderStats(monthName: string, cycleYear: number) {
   return useQuery({
     queryKey: ['order-stats', monthName, cycleYear],
@@ -242,6 +273,7 @@ export function useUpsertOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['distinct-types'] });
       toast.success('Order saved successfully');
     },
     onError: (error: Error) => {
@@ -279,6 +311,7 @@ export function useDeleteOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['distinct-types'] });
       toast.success('Record deleted successfully');
     },
     onError: (error: Error) => {
