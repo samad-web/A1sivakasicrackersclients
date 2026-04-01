@@ -47,9 +47,9 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         query = query.ilike('type', `${filters.typeFilter}%`);
       }
 
-      // Sorting & Pagination (12 Month first, then 10, 8, 6, etc.)
+      // Sorting & Pagination (highest month scheme first, e.g. 12, 10, 8, 6)
       const { data, error, count } = await query
-        .order('type_priority', { ascending: true })
+        .order('type_sort', { ascending: false })
         .order('created_at', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -344,16 +344,6 @@ export function useUpsertOrder() {
           cleanOrder[key] = tempOrder[key];
         }
       });
-
-      // Auto-set type_priority based on type
-      if (cleanOrder.type) {
-        const num = parseInt(cleanOrder.type);
-        if (num === 12) cleanOrder.type_priority = 1;
-        else if (num === 10) cleanOrder.type_priority = 2;
-        else if (num === 8) cleanOrder.type_priority = 3;
-        else if (num === 6) cleanOrder.type_priority = 4;
-        else cleanOrder.type_priority = 99;
-      }
 
       if (order.id) {
         const { error } = await supabase
