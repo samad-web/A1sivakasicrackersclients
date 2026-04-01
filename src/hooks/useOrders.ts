@@ -47,8 +47,9 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         query = query.ilike('type', `${filters.typeFilter}%`);
       }
 
-      // Sorting & Pagination
+      // Sorting & Pagination (12 Month first, then 10, 8, 6, etc.)
       const { data, error, count } = await query
+        .order('type_priority', { ascending: true })
         .order('created_at', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -243,6 +244,92 @@ export function useToggleOrderFlag() {
   });
 }
 
+export function useAdvancePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      monthNames,
+      order,
+    }: {
+      orderId: string;
+      monthNames: string[];
+      order?: Order;
+    }) => {
+      const { data, error } = await supabase.rpc('advance_payment_verification', {
+        p_order_id: orderId,
+        p_month_names: monthNames,
+        p_is_verified: true,
+      });
+
+      if (error) throw error;
+
+      // Trigger webhook for each month
+      if (order) {
+        const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const year = new Date().getFullYear();
+
+        const rawAddress = order.customer_address || '';
+        const parts = rawAddress.split(',').map(p => p.trim());
+        let pincode = '';
+        let state = '';
+        const pinIndex = parts.findIndex(p => p.startsWith('Pin - '));
+        if (pinIndex !== -1) {
+          pincode = parts[pinIndex].replace('Pin - ', '');
+          if (pinIndex > 0) state = parts[pinIndex - 1];
+        }
+        const line1Parts = parts.filter((_, i) => i !== pinIndex && (pinIndex === -1 || i !== pinIndex - 1));
+        const addressLine1 = line1Parts.join(', ');
+        const addressLine2 = [order.district, state, pincode].filter(Boolean).join(', ');
+
+        const payload = {
+          order_completed: order.order_completed || false,
+          payment_verified: true,
+          id: orderId,
+          receipt_no: order.receipt_no,
+          date,
+          customer_name: order.name,
+          contact_number: `91${order.number}`,
+          secondary_number: order.secondary_number || '',
+          address_line1: addressLine1,
+          address_line2: addressLine2,
+          scheme_name: order.scheme,
+          scheme_details: order.type,
+          value: order.value,
+          amount_paid: String(order.value),
+          district: order.district || '',
+          month_label: monthNames.map(m => `${m} ${year}`).join(', '),
+          month_name: monthNames.join(', '),
+          payment_mode: order.payment_mode || 'Gpay',
+          invoice_url: order.invoice_url || '',
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          advance_months: monthNames.length,
+        };
+
+        const webhookUrl = 'https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook';
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(err => console.error('[Webhook] Trigger failed:', err));
+      }
+
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
+      toast.success(`Payment verified for ${variables.monthNames.length} month(s)`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to verify advance payment');
+      console.error(error);
+    },
+  });
+}
+
 export function useUpsertOrder() {
   const queryClient = useQueryClient();
 
@@ -257,6 +344,16 @@ export function useUpsertOrder() {
           cleanOrder[key] = tempOrder[key];
         }
       });
+
+      // Auto-set type_priority based on type
+      if (cleanOrder.type) {
+        const num = parseInt(cleanOrder.type);
+        if (num === 12) cleanOrder.type_priority = 1;
+        else if (num === 10) cleanOrder.type_priority = 2;
+        else if (num === 8) cleanOrder.type_priority = 3;
+        else if (num === 6) cleanOrder.type_priority = 4;
+        else cleanOrder.type_priority = 99;
+      }
 
       if (order.id) {
         const { error } = await supabase

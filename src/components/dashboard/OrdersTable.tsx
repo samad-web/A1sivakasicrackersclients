@@ -10,8 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { OrderActions } from './OrderActions';
 import { Order, PaymentStatusFilter } from '@/types/order';
-import { useToggleOrderFlag } from '@/hooks/useOrders';
+import { useToggleOrderFlag, useAdvancePayment } from '@/hooks/useOrders';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 interface OrdersTableProps {
   orders: Order[];
@@ -30,6 +32,8 @@ interface OrdersTableProps {
   onTypeFilterChange: (type: string) => void;
   availableTypes?: string[];
   monthName: string;
+  cycleMonths: { val: string; label: string }[];
+  currentMonth: string;
   isReadOnly?: boolean;
 }
 
@@ -50,9 +54,48 @@ export function OrdersTable({
   onTypeFilterChange,
   availableTypes = [],
   monthName,
+  cycleMonths,
+  currentMonth,
   isReadOnly,
 }: OrdersTableProps) {
   const toggleFlag = useToggleOrderFlag();
+  const advancePayment = useAdvancePayment();
+  const [advanceOrder, setAdvanceOrder] = useState<Order | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+
+  // Get months from current month onwards in the cycle
+  const currentMonthIndex = cycleMonths.findIndex(m => m.val === currentMonth);
+  const remainingMonths = cycleMonths.slice(currentMonthIndex).map(m => {
+    const d = new Date(m.val + '-01');
+    return { val: m.val, name: d.toLocaleDateString('en-US', { month: 'long' }) };
+  });
+
+  const openAdvanceDialog = (order: Order) => {
+    const unpaidMonths = remainingMonths.filter(m => {
+      const payment = order.monthly_payments?.find(p => p.month_name === m.name);
+      return !payment || payment.payment_status !== 'Completed';
+    });
+    setSelectedMonths(unpaidMonths.length > 0 ? [unpaidMonths[0].name] : []);
+    setAdvanceOrder(order);
+  };
+
+  const handleAdvanceSubmit = () => {
+    if (!advanceOrder || selectedMonths.length === 0) return;
+    advancePayment.mutate({
+      orderId: advanceOrder.id,
+      monthNames: selectedMonths,
+      order: advanceOrder,
+    });
+    setAdvanceOrder(null);
+    setSelectedMonths([]);
+  };
+
+  const toggleMonth = (month: string) => {
+    setSelectedMonths(prev =>
+      prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
+    );
+  };
+
   const safePageSize = pageSize || 50;
   const totalPages = Math.ceil((totalCount || 0) / safePageSize);
 
@@ -192,6 +235,14 @@ export function OrdersTable({
                         className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all active:scale-90"
                       />
                     </div>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => openAdvanceDialog(order)}
+                        className="text-[10px] font-bold text-primary hover:underline"
+                      >
+                        Advance Pay
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -276,19 +327,29 @@ export function OrdersTable({
                       {formatCurrency(order.value)}
                     </TableCell>
                     <TableCell className="text-center py-4">
-                      <input
-                        type="checkbox"
-                        checked={order.monthly_payments?.some(p => p.month_name === monthName && p.payment_status === 'Completed')}
-                        onChange={(e) => toggleFlag.mutate({
-                          orderId: order.id,
-                          field: 'payment_verified',
-                          value: e.target.checked,
-                          order: order,
-                          monthName
-                        })}
-                        disabled={toggleFlag.isPending || isReadOnly}
-                        className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all hover:scale-110 active:scale-90"
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={order.monthly_payments?.some(p => p.month_name === monthName && p.payment_status === 'Completed')}
+                          onChange={(e) => toggleFlag.mutate({
+                            orderId: order.id,
+                            field: 'payment_verified',
+                            value: e.target.checked,
+                            order: order,
+                            monthName
+                          })}
+                          disabled={toggleFlag.isPending || isReadOnly}
+                          className="h-5 w-5 rounded-md border-emerald-500/20 text-emerald-500 focus:ring-emerald-500 transition-all hover:scale-110 active:scale-90"
+                        />
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => openAdvanceDialog(order)}
+                            className="text-[10px] font-bold text-primary hover:underline"
+                          >
+                            Advance
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right py-4 pr-6">
                       <OrderActions order={order} isReadOnly={isReadOnly} />
@@ -348,6 +409,40 @@ export function OrdersTable({
           </div>
         )
       }
+      {/* Advance Payment Dialog */}
+      <Dialog open={!!advanceOrder} onOpenChange={(open) => { if (!open) { setAdvanceOrder(null); setSelectedMonths([]); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black">Advance Payment</DialogTitle>
+            <p className="text-sm text-muted-foreground">{advanceOrder?.name} — {advanceOrder?.receipt_no}</p>
+          </DialogHeader>
+          <div className="space-y-1 max-h-60 overflow-y-auto">
+            {remainingMonths.map(m => {
+              const isPaid = advanceOrder?.monthly_payments?.some(p => p.month_name === m.name && p.payment_status === 'Completed');
+              return (
+                <label key={m.val} className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-muted cursor-pointer ${isPaid ? 'opacity-50' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={isPaid || selectedMonths.includes(m.name)}
+                    disabled={isPaid}
+                    onChange={() => toggleMonth(m.name)}
+                    className="h-4 w-4 rounded border-primary/20 text-primary focus:ring-primary"
+                  />
+                  <span>{m.name}</span>
+                  {isPaid && <span className="text-[10px] text-emerald-500 ml-auto font-bold">Paid</span>}
+                </label>
+              );
+            })}
+          </div>
+          <Button
+            className="w-full"
+            disabled={selectedMonths.length === 0 || advancePayment.isPending}
+            onClick={handleAdvanceSubmit}
+          >
+            {advancePayment.isPending ? 'Processing...' : `Verify ${selectedMonths.length} month(s)`}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }

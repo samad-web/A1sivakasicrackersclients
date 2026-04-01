@@ -201,6 +201,8 @@ const Index = () => {
             onTypeFilterChange={(t) => { setTypeFilter(t); setPage(0); }}
             availableTypes={distinctTypes}
             monthName={monthName}
+            cycleMonths={months}
+            currentMonth={currentMonth}
             isReadOnly={isReadOnly}
           />
         </div>

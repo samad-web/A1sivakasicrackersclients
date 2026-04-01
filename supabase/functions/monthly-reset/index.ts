@@ -75,25 +75,30 @@ serve(async (req) => {
             )
         }
 
-        // Step 1: Fetch all "Completed" payments to archive
+        // Determine the previous month name (the month we're resetting)
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const prevMonthName = prevMonth.toLocaleDateString('en-US', { month: 'long' })
+        console.log(`Resetting payments for previous month: ${prevMonthName}`)
+
+        // Step 1: Fetch completed payments for PREVIOUS month only to archive
         const { data: completedPayments, error: fetchError } = await supabase
             .from('monthly_payments')
             .select('*')
             .eq('payment_status', 'Completed')
+            .eq('month_name', prevMonthName)
 
         if (fetchError) {
             console.error('Error fetching completed payments:', fetchError)
             throw new Error(`Failed to fetch payments: ${fetchError.message}`)
         }
 
-        console.log(`Found ${completedPayments?.length || 0} completed payments to archive`)
+        console.log(`Found ${completedPayments?.length || 0} completed payments to archive for ${prevMonthName}`)
 
         let archivedCount = 0
         let resetCount = 0
 
-        // Step 2: Archive completed payments
+        // Step 2: Archive completed payments for previous month
         if (completedPayments && completedPayments.length > 0) {
-            // Map to archive format
             const archiveRecords = completedPayments.map((payment: PaymentRecord) => ({
                 archive_date: resetMonthStr,
                 order_id: payment.order_id,
@@ -117,7 +122,7 @@ serve(async (req) => {
             console.log(`Archived ${archivedCount} payment records`)
         }
 
-        // Step 3: Reset ALL monthly_payments to "Pending"
+        // Step 3: Reset ONLY previous month's payments to "Pending" (preserve advance-paid months)
         const { error: resetError, count } = await supabase
             .from('monthly_payments')
             .update({
@@ -125,7 +130,8 @@ serve(async (req) => {
                 payment_date: null,
                 notes: null,
             })
-            .neq('payment_status', 'Empty') // Don't reset Empty status
+            .eq('month_name', prevMonthName)
+            .neq('payment_status', 'Empty')
             .select('*', { count: 'exact', head: true })
 
         if (resetError) {
@@ -134,7 +140,40 @@ serve(async (req) => {
         }
 
         resetCount = count || 0
-        console.log(`Reset ${resetCount} payment records to Pending`)
+        console.log(`Reset ${resetCount} payment records to Pending for ${prevMonthName}`)
+
+        // Step 3b: Reset orders.payment_verified ONLY for orders that don't have current month paid
+        // This preserves payment_verified for advance-paid users
+        const currentMonthName = now.toLocaleDateString('en-US', { month: 'long' })
+
+        const { data: advancePaidOrders } = await supabase
+            .from('monthly_payments')
+            .select('order_id')
+            .eq('month_name', currentMonthName)
+            .eq('payment_status', 'Completed')
+
+        const advancePaidIds = (advancePaidOrders || []).map((r: { order_id: string }) => r.order_id)
+
+        let orderResetQuery = supabase
+            .from('orders')
+            .update({ payment_verified: false })
+            .eq('payment_verified', true)
+
+        if (advancePaidIds.length > 0) {
+            // Exclude advance-paid orders from reset
+            for (const id of advancePaidIds) {
+                orderResetQuery = orderResetQuery.neq('id', id)
+            }
+        }
+
+        const { error: orderResetError } = await orderResetQuery
+
+        if (orderResetError) {
+            console.error('Error resetting order payment_verified:', orderResetError)
+            throw new Error(`Failed to reset order flags: ${orderResetError.message}`)
+        }
+
+        console.log(`Reset orders.payment_verified (preserved ${advancePaidIds.length} advance-paid orders)`)
 
         // Step 4: Log the successful operation
         const executionTime = Date.now() - startTime
