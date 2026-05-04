@@ -47,10 +47,10 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         query = query.ilike('type', `${filters.typeFilter}%`);
       }
 
-      // Sorting & Pagination (highest month scheme first, e.g. 12, 10, 8, 6)
+      // Sorting: scheme months desc (12, 10, 8, 6), then receipt_no asc within each group
       const { data, error, count } = await query
         .order('type_sort', { ascending: false })
-        .order('created_at', { ascending: false })
+        .order('receipt_no', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (error) throw error;
