@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { SettingsDialog } from '@/components/dashboard/SettingsDialog';
+import { SendRemindersDialog } from '@/components/dashboard/SendRemindersDialog';
 import { OrderForm } from '@/components/dashboard/OrderForm';
+import { useAuth } from '@/contexts/AuthProvider';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,7 @@ const Index = () => {
   });
 
   const isReadOnly = useMemo(() => isCycleArchived(selectedCycleYear), [selectedCycleYear]);
+  const { isAdmin, signOut } = useAuth();
 
   // Performance Optimization: Moving filter/pagination state to Index
   const [page, setPage] = useState(0);
@@ -165,7 +168,19 @@ const Index = () => {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 {isFetching ? 'Refreshing...' : 'Refresh'}
               </Button>
+              {isAdmin && !isReadOnly && (
+                <SendRemindersDialog monthName={monthName} cycleYear={selectedCycleYear} />
+              )}
               <SettingsDialog />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => signOut()}
+                className="bg-background/50 hover:bg-destructive/5 border-none ring-1 ring-border"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>

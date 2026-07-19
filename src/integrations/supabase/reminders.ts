@@ -1,0 +1,76 @@
+// Access layer for the reminder engine. Its tables/RPCs are added by the
+// 20260719120000_reminder_engine migration and are NOT in the generated Database types,
+// so the few calls that touch them reach the client through narrow `unknown` casts
+// (localized here rather than sprinkled across components).
+import { supabase } from './client';
+
+export interface ReminderRun {
+  id: string;
+  month_name: string;
+  is_test: boolean;
+  status: 'running' | 'completed' | 'failed' | 'canceled';
+  total_count: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface StartResult {
+  run_id?: string;
+  total?: number;
+  pending?: number;
+  skipped?: number;
+  test?: boolean;
+  month_name?: string;
+  error?: string;
+}
+
+/** Is the signed-in user an admin? (public.is_admin RPC) */
+export async function checkIsAdmin(): Promise<boolean> {
+  const rpc = supabase.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>;
+  const { data } = await rpc('is_admin');
+  return data === true;
+}
+
+/** Fetch a run's live progress row. */
+export async function fetchRun(runId: string): Promise<ReminderRun | null> {
+  const from = supabase.from as unknown as (t: string) => {
+    select: (c: string) => { eq: (col: string, val: string) => {
+      maybeSingle: () => Promise<{ data: ReminderRun | null }>;
+    } };
+  };
+  const { data } = await from('reminder_runs').select('*').eq('id', runId).maybeSingle();
+  return data;
+}
+
+/** Read the error message out of a FunctionsHttpError's Response body, if present. */
+async function invokeErrorMessage(error: { message: string; context?: unknown }): Promise<string> {
+  const ctx = error.context as Response | undefined;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+    } catch { /* fall through */ }
+  }
+  return error.message;
+}
+
+/** Trigger a real run for everyone unpaid in the month. */
+export async function startReminders(monthName: string): Promise<StartResult> {
+  const { data, error } = await supabase.functions.invoke('reminders-start', {
+    body: { month_name: monthName },
+  });
+  if (error) return { error: await invokeErrorMessage(error) };
+  return data as StartResult;
+}
+
+/** Trigger a single test send to a phone number (verifies delivery before a real run). */
+export async function startTestReminder(phone: string, monthName: string): Promise<StartResult> {
+  const { data, error } = await supabase.functions.invoke('reminders-start', {
+    body: { month_name: monthName, test_phone: phone },
+  });
+  if (error) return { error: await invokeErrorMessage(error) };
+  return data as StartResult;
+}

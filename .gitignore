@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Reminder run artifacts — contain customer names and phone numbers
+scripts/preview-*.json
+scripts/.sent-*.log
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
