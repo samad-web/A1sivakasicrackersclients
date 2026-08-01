@@ -154,26 +154,31 @@ serve(async (req) => {
 
         const advancePaidIds = (advancePaidOrders || []).map((r: { order_id: string }) => r.order_id)
 
-        let orderResetQuery = supabase
+        // Set payment_verified=false for all orders first
+        const { error: resetAllFlagsError } = await supabase
             .from('orders')
             .update({ payment_verified: false })
             .eq('payment_verified', true)
 
+        if (resetAllFlagsError) {
+            console.error('Error resetting payment_verified flags:', resetAllFlagsError)
+            throw new Error(`Failed to reset order flags: ${resetAllFlagsError.message}`)
+        }
+
+        // Then set payment_verified=true for orders that have current month Completed (advance + direct payers)
         if (advancePaidIds.length > 0) {
-            // Exclude advance-paid orders from reset
-            for (const id of advancePaidIds) {
-                orderResetQuery = orderResetQuery.neq('id', id)
+            const { error: setPaidFlagsError } = await supabase
+                .from('orders')
+                .update({ payment_verified: true })
+                .in('id', advancePaidIds)
+
+            if (setPaidFlagsError) {
+                console.error('Error setting payment_verified for paid orders:', setPaidFlagsError)
+                throw new Error(`Failed to set paid flags: ${setPaidFlagsError.message}`)
             }
         }
 
-        const { error: orderResetError } = await orderResetQuery
-
-        if (orderResetError) {
-            console.error('Error resetting order payment_verified:', orderResetError)
-            throw new Error(`Failed to reset order flags: ${orderResetError.message}`)
-        }
-
-        console.log(`Reset orders.payment_verified (preserved ${advancePaidIds.length} advance-paid orders)`)
+        console.log(`Synced orders.payment_verified to current month status (${advancePaidIds.length} orders set to true)`)
 
         // Step 4: Log the successful operation
         const executionTime = Date.now() - startTime
