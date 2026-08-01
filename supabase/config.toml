@@ -1,1 +1,12 @@
 project_id = "eojfokocbecrfcmpfpdf"
+
+# reminders-worker is called by pg_cron, which sends no user JWT — it authenticates
+# itself with CRON_SECRET, so platform JWT verification must be off or the gateway
+# rejects the cron before our code runs.
+[functions.reminders-worker]
+verify_jwt = false
+
+# reminders-start is called from the browser with the admin's session JWT; keep
+# platform JWT verification on (our code additionally checks is_admin).
+[functions.reminders-start]
+verify_jwt = true

@@ -4,6 +4,12 @@
 // (localized here rather than sprinkled across components).
 import { supabase } from './client';
 
+// NOTE: the edge function is deployed in Supabase under the name `reminders-start-`
+// (with a trailing hyphen — a typo at creation time). The repo dir and this code would
+// normally use `reminders-start`; we match the deployed name so invoke() resolves. If the
+// function is ever redeployed under the correct name, change this single constant back.
+const START_FN = 'reminders-start-';
+
 export interface ReminderRun {
   id: string;
   month_name: string;
@@ -59,7 +65,7 @@ async function invokeErrorMessage(error: { message: string; context?: unknown })
 
 /** Trigger a real run for everyone unpaid in the month. */
 export async function startReminders(monthName: string): Promise<StartResult> {
-  const { data, error } = await supabase.functions.invoke('reminders-start', {
+  const { data, error } = await supabase.functions.invoke(START_FN, {
     body: { month_name: monthName },
   });
   if (error) return { error: await invokeErrorMessage(error) };
@@ -68,7 +74,7 @@ export async function startReminders(monthName: string): Promise<StartResult> {
 
 /** Trigger a single test send to a phone number (verifies delivery before a real run). */
 export async function startTestReminder(phone: string, monthName: string): Promise<StartResult> {
-  const { data, error } = await supabase.functions.invoke('reminders-start', {
+  const { data, error } = await supabase.functions.invoke(START_FN, {
     body: { month_name: monthName, test_phone: phone },
   });
   if (error) return { error: await invokeErrorMessage(error) };
