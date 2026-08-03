@@ -68,8 +68,14 @@ serve(async (req) => {
 
     // Guard: this function is publicly invokable; only the cron (which knows the secret)
     // may drive the queue.
-    const cronSecret = Deno.env.get("CRON_SECRET")
-    if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    //
+    // Both sides are trimmed. A secret pasted into the Supabase dashboard picked up a
+    // trailing newline once — the env value was 33 chars for a 32-char secret — which is
+    // invisible in the UI and 401'd every cron tick for hours. Whitespace is not part of
+    // the secret, so trimming costs nothing and removes the whole failure mode.
+    const cronSecret = Deno.env.get("CRON_SECRET")?.trim()
+    const provided = req.headers.get("x-cron-secret")?.trim()
+    if (!cronSecret || provided !== cronSecret) {
         return json({ error: "Forbidden" }, 401)
     }
 
