@@ -33,21 +33,31 @@ export interface StartResult {
   error?: string;
 }
 
+/**
+ * Cast the CLIENT, never the method. `const rpc = supabase.rpc` detaches the function from
+ * its instance, so `this` is undefined and supabase-js throws
+ * "Cannot read properties of undefined (reading 'rest')" — which, called from AuthProvider,
+ * strands the whole app on its loading spinner.
+ */
+type LooseClient = {
+  rpc: (fn: string) => Promise<{ data: boolean | null }>;
+  from: (t: string) => {
+    select: (c: string) => { eq: (col: string, val: string) => {
+      maybeSingle: () => Promise<{ data: ReminderRun | null }>;
+    } };
+  };
+};
+const loose = supabase as unknown as LooseClient;
+
 /** Is the signed-in user an admin? (public.is_admin RPC) */
 export async function checkIsAdmin(): Promise<boolean> {
-  const rpc = supabase.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>;
-  const { data } = await rpc('is_admin');
+  const { data } = await loose.rpc('is_admin');
   return data === true;
 }
 
 /** Fetch a run's live progress row. */
 export async function fetchRun(runId: string): Promise<ReminderRun | null> {
-  const from = supabase.from as unknown as (t: string) => {
-    select: (c: string) => { eq: (col: string, val: string) => {
-      maybeSingle: () => Promise<{ data: ReminderRun | null }>;
-    } };
-  };
-  const { data } = await from('reminder_runs').select('*').eq('id', runId).maybeSingle();
+  const { data } = await loose.from('reminder_runs').select('*').eq('id', runId).maybeSingle();
   return data;
 }
 

@@ -22,18 +22,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
+    // Failing the admin check must never gate rendering: not-an-admin and
+    // could-not-tell both mean "no admin UI", and treating them differently once left the
+    // whole app spinning forever behind RequireAuth.
     const resolveAdmin = async (s: Session | null) => {
       if (!s) { if (active) setIsAdmin(false); return; }
-      const admin = await checkIsAdmin();
-      if (active) setIsAdmin(admin);
+      try {
+        const admin = await checkIsAdmin();
+        if (active) setIsAdmin(admin);
+      } catch (err) {
+        console.error('[Auth] admin check failed:', err);
+        if (active) setIsAdmin(false);
+      }
     };
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!active) return;
-      setSession(session);
-      await resolveAdmin(session);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (!active) return;
+        setSession(session);
+        await resolveAdmin(session);
+      })
+      .catch((err) => console.error('[Auth] getSession failed:', err))
+      // Always resolve loading — a failure here drops the user to /login, which is
+      // recoverable, instead of an infinite spinner, which is not.
+      .finally(() => { if (active) setLoading(false); });
 
     // Never call other supabase methods synchronously inside this callback (deadlocks the
     // client); defer the admin check to a microtask.
