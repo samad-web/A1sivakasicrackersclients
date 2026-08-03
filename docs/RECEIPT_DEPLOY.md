@@ -8,15 +8,19 @@ the `receipt-send` edge function.
 showing "WhatsApp confirmation failed" until the function exists. Payments still save
 either way — the message is best-effort and never rolls one back.
 
-## 1. Link the project
+## 1. Link the project — mind the ref
 
-The CLI must be logged into the account that owns `eojfokocbecrfcmpfpdf` (not
-Sirah_Billing / Lexdraft):
+`supabase/config.toml` says `project_id = "eojfokocbecrfcmpfpdf"`, but the app's real
+database is **`fozdckbsznvncwkzjqsb`** (from `.env` `VITE_SUPABASE_URL` — it's where the
+live `reminders-start-` / `reminders-worker` functions and the reminder tables actually
+are). Deploying against config.toml's ref sends this to the wrong project.
 
 ```bash
-supabase login
-supabase link --project-ref eojfokocbecrfcmpfpdf
+supabase login   # must be the account owning fozdckbsznvncwkzjqsb
+supabase link --project-ref fozdckbsznvncwkzjqsb
 ```
+
+Every command below passes `--project-ref` explicitly for the same reason.
 
 ## 2. Secrets
 
@@ -24,7 +28,8 @@ supabase link --project-ref eojfokocbecrfcmpfpdf
 `supabase secrets list` to confirm. Only the receipt template is new:
 
 ```bash
-supabase secrets set KWIC_RECEIPT_TEMPLATE_ID=payment_reminder_new
+supabase secrets set --project-ref fozdckbsznvncwkzjqsb \
+  KWIC_RECEIPT_TEMPLATE_ID=payment_reminder_new
 ```
 
 Note this is *separate* from `KWIC_TEMPLATE_ID`, which is the unpaid-reminder template.
@@ -32,8 +37,12 @@ Note this is *separate* from `KWIC_TEMPLATE_ID`, which is the unpaid-reminder te
 ## 3. Deploy
 
 ```bash
-supabase functions deploy receipt-send
+supabase functions deploy receipt-send --project-ref fozdckbsznvncwkzjqsb
 ```
+
+Deploy it under exactly this name — the frontend invokes `receipt-send`. (The reminder
+engine's start function got deployed as `reminders-start-`, with a stray trailing hyphen,
+and `src/integrations/supabase/reminders.ts` has had to match that typo ever since.)
 
 `verify_jwt = true` is pinned in `supabase/config.toml`: the browser calls this with the
 admin's session JWT, and the function additionally checks the caller against the `admins`
