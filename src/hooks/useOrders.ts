@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, PaymentStatusFilter } from '@/types/order';
+import { notifyPaymentVerified } from '@/lib/paymentWebhook';
 import { toast } from 'sonner';
 
 export interface OrdersFilters {
@@ -170,58 +171,10 @@ export function useToggleOrderFlag() {
 
         if (directError) throw directError;
 
-        // Trigger Webhook if verified
+        // Generate the receipt and WhatsApp it to the customer. Detached on purpose: the
+        // PDF takes a few seconds and must not hold up the checkbox.
         if (value === true && order) {
-          const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-          const monthLabel = `${monthName} 2026`; // Simplified for now
-
-          // Parse address components
-          const rawAddress = order.customer_address || '';
-          const parts = rawAddress.split(',').map(p => p.trim());
-          let pincode = '';
-          let state = '';
-
-          const pinIndex = parts.findIndex(p => p.startsWith('Pin - '));
-          if (pinIndex !== -1) {
-            pincode = parts[pinIndex].replace('Pin - ', '');
-            if (pinIndex > 0) state = parts[pinIndex - 1];
-          }
-
-          const line1Parts = parts.filter((_, i) => i !== pinIndex && (pinIndex === -1 || i !== pinIndex - 1));
-          const addressLine1 = line1Parts.join(', ');
-          const addressLine2 = [order.district, state, pincode].filter(Boolean).join(', ');
-
-          const payload = {
-            order_completed: order.order_completed || false,
-            payment_verified: true,
-            id: orderId,
-            receipt_no: order.receipt_no,
-            date: date,
-            customer_name: order.name,
-            contact_number: `91${order.number}`,
-            secondary_number: order.secondary_number || '',
-            address_line1: addressLine1,
-            address_line2: addressLine2,
-            scheme_name: order.scheme,
-            scheme_details: order.type,
-            value: order.value,
-            amount_paid: String(order.value),
-            district: order.district || '',
-            month_label: monthLabel,
-            month_name: monthName,
-            payment_mode: order.payment_mode || 'Gpay',
-            invoice_url: order.invoice_url || '',
-            created_at: order.created_at,
-            updated_at: order.updated_at,
-          };
-
-          const webhookUrl = 'https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook';
-
-          fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }).catch(err => console.error('[Webhook] Trigger failed:', err));
+          void notifyPaymentVerified(order, orderId, { monthNames: [monthName] });
         }
       } else {
         const { error } = await supabase
@@ -265,55 +218,12 @@ export function useAdvancePayment() {
 
       if (error) throw error;
 
-      // Trigger webhook for each month
+      // One receipt covering every prepaid month, then WhatsApp it.
       if (order) {
-        const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        const year = new Date().getFullYear();
-
-        const rawAddress = order.customer_address || '';
-        const parts = rawAddress.split(',').map(p => p.trim());
-        let pincode = '';
-        let state = '';
-        const pinIndex = parts.findIndex(p => p.startsWith('Pin - '));
-        if (pinIndex !== -1) {
-          pincode = parts[pinIndex].replace('Pin - ', '');
-          if (pinIndex > 0) state = parts[pinIndex - 1];
-        }
-        const line1Parts = parts.filter((_, i) => i !== pinIndex && (pinIndex === -1 || i !== pinIndex - 1));
-        const addressLine1 = line1Parts.join(', ');
-        const addressLine2 = [order.district, state, pincode].filter(Boolean).join(', ');
-
-        const payload = {
-          order_completed: order.order_completed || false,
-          payment_verified: true,
-          id: orderId,
-          receipt_no: order.receipt_no,
-          date,
-          customer_name: order.name,
-          contact_number: `91${order.number}`,
-          secondary_number: order.secondary_number || '',
-          address_line1: addressLine1,
-          address_line2: addressLine2,
-          scheme_name: order.scheme,
-          scheme_details: order.type,
-          value: order.value,
-          amount_paid: String(order.value),
-          district: order.district || '',
-          month_label: monthNames.map(m => `${m} ${year}`).join(', '),
-          month_name: monthNames.join(', '),
-          payment_mode: order.payment_mode || 'Gpay',
-          invoice_url: order.invoice_url || '',
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          advance_months: monthNames.length,
-        };
-
-        const webhookUrl = 'https://n8n.srv930949.hstgr.cloud/webhook/payment-webhook';
-        fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(err => console.error('[Webhook] Trigger failed:', err));
+        void notifyPaymentVerified(order, orderId, {
+          monthNames,
+          advanceMonths: monthNames.length,
+        });
       }
 
       return data;

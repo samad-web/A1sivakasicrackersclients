@@ -10,3 +10,7 @@ verify_jwt = false
 # platform JWT verification on (our code additionally checks is_admin).
 [functions.reminders-start]
 verify_jwt = true
+
+# receipt-send is called from the browser with the admin session JWT, like reminders-start.
+[functions.receipt-send]
+verify_jwt = true
