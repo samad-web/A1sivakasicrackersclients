@@ -7,11 +7,12 @@
 //      preflight and the POST), so a browser can never call it.
 //   2. the api key would otherwise ship inside the public JS bundle.
 //
-// The receipt PDF is NOT sent here. `payment_reminder_new` is a text-only template, and
-// api/v1/push silently ignores unknown body fields — media_url / document / whatsapp.document
-// / header_document_url all returned a normal message_id while delivering plain text. The PDF
-// needs either a template with a real header component or KWIC's free-form document API
-// (which our api_key cannot reach). Until then this sends the confirmation text only.
+// Attaching the receipt PDF depends on the template having a real document header. With the
+// text-only `payment_reminder_new`, api/v1/push silently ignored every attachment field tried
+// (media_url / document / whatsapp.document / header_document_url each returned a normal
+// message_id while delivering plain text), so KWIC_MEDIA_FIELD is unset by default and the
+// message goes out as text. Once a header template exists, set KWIC_RECEIPT_TEMPLATE_ID to it
+// and KWIC_MEDIA_FIELD to whatever key KWIC wants — no code change.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
