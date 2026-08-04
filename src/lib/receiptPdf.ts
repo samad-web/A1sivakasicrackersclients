@@ -88,6 +88,11 @@ export async function uploadReceipt(
     const { error } = await supabase.storage.from(BUCKET).upload(path, pdf, {
         contentType: 'application/pdf',
         upsert: true,
+        // The path is deliberately stable per order+month, so a regenerated receipt replaces
+        // the old one at the same URL. Supabase defaults to caching public objects for an
+        // hour, which means a correction stays invisible behind the CDN — and the customer's
+        // existing link keeps resolving to the old file.
+        cacheControl: '0',
     });
     if (error) throw new Error(`receipt upload failed: ${error.message}`);
 
