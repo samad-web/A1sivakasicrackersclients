@@ -56,6 +56,10 @@ export async function generateReceiptPdf(data: Partial<ReceiptData>): Promise<Bl
             windowWidth: A4_PX.width,
             windowHeight: A4_PX.height,
             logging: false,
+            // Render via SVG foreignObject so the browser lays the text out itself.
+            // html2canvas's default path re-implements text layout and inserts visible gaps
+            // between runs — "a1sivakasicrackers  .com" on the first receipts we shipped.
+            foreignObjectRendering: true,
         });
 
         const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
