@@ -48,6 +48,15 @@ serve(async (req) => {
         const KWIC_API_KEY = Deno.env.get("KWIC_API_KEY")!
         // Distinct from KWIC_TEMPLATE_ID, which is the unpaid-reminder template.
         const TEMPLATE_ID = Deno.env.get("KWIC_RECEIPT_TEMPLATE_ID") ?? "payment_reminder_new"
+        // Named template variable carrying the receipt link, e.g. "Receipt" for a body
+        // reading "Download your receipt: {{Receipt}}". Unset = text-only message.
+        //
+        // This is how the receipt reaches the customer, because api/v1/push has NO
+        // per-message document override: probed 2026-08-04 against a template with a real
+        // document header, and whatsapp.document.link / document / media_url / document_url /
+        // header_document_url / media were ALL ignored — every send delivered the template's
+        // approval sample instead. Variables, by contrast, are proven to substitute.
+        const URL_VAR = Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? ""
 
         // --- AuthZ: caller must be a signed-in admin, same rule as reminders-start ----
         const authHeader = req.headers.get("Authorization") ?? ""
@@ -70,9 +79,12 @@ serve(async (req) => {
         // Read the customer from the DB rather than trusting the caller: the client may
         // not decide which number receives a message.
         const { data: order, error: orderErr } = await admin
-            .from("orders").select("receipt_no,name,number,value").eq("id", orderId).maybeSingle()
+            .from("orders").select("receipt_no,name,number,value,invoice_url").eq("id", orderId).maybeSingle()
         if (orderErr) throw orderErr
         if (!order) return json({ error: "Order not found" }, 404)
+
+        // Prefer the URL the caller just uploaded; fall back to whatever is stored.
+        const receiptUrl: string = body.receipt_url || order.invoice_url || ""
 
         const phone = toKwicNumber(order.number)
         if (!phone) return json({ skipped: true, reason: `unusable phone number "${order.number}"` })
@@ -91,7 +103,11 @@ serve(async (req) => {
                     // Named template variables — "Payment Confirmation! We've received your
                     // payment for Invoice #{{Scheme}}. Amount: ₹{{Amount}}". Confirmed
                     // dispatching live on 2026-08-03.
-                    variable: { Scheme: String(order.receipt_no), Amount: String(order.value) },
+                    variable: {
+                        Scheme: String(order.receipt_no),
+                        Amount: String(order.value),
+                        ...(URL_VAR && receiptUrl ? { [URL_VAR]: receiptUrl } : {}),
+                    },
                     template_id: TEMPLATE_ID,
                 }),
             })
