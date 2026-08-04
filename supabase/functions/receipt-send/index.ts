@@ -82,7 +82,7 @@ serve(async (req) => {
         // Read the customer from the DB rather than trusting the caller: the client may
         // not decide which number receives a message.
         const { data: order, error: orderErr } = await admin
-            .from("orders").select("receipt_no,name,number,value,invoice_url").eq("id", orderId).maybeSingle()
+            .from("orders").select("receipt_no,name,number,scheme,value,invoice_url").eq("id", orderId).maybeSingle()
         if (orderErr) throw orderErr
         if (!order) return json({ error: "Order not found" }, 404)
 
@@ -108,7 +108,9 @@ serve(async (req) => {
                     // dispatching live on 2026-08-03.
                     variable: {
                         Scheme: String(order.receipt_no),
-                        Amount: String(order.value),
+                        // The monthly instalment (order.scheme), NOT order.value which is the scheme total.
+                        // The receipt prints scheme too, and the two must agree.
+                        Amount: String(order.scheme),
                         ...(URL_VAR && receiptUrl ? { [URL_VAR]: receiptUrl } : {}),
                     },
                     template_id: TEMPLATE_ID,
