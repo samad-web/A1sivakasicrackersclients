@@ -44,10 +44,13 @@ serve(async (req) => {
         const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
         const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
         const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
-        const KWIC_BASE_URL = Deno.env.get("KWIC_BASE_URL")!
-        const KWIC_API_KEY = Deno.env.get("KWIC_API_KEY")!
+        // Trimmed: secrets pasted into the Supabase dashboard have arrived with a trailing
+        // newline before, and a template id or api key with invisible whitespace fails in
+        // ways the dashboard gives you no way to see.
+        const KWIC_BASE_URL = Deno.env.get("KWIC_BASE_URL")!.trim()
+        const KWIC_API_KEY = Deno.env.get("KWIC_API_KEY")!.trim()
         // Distinct from KWIC_TEMPLATE_ID, which is the unpaid-reminder template.
-        const TEMPLATE_ID = Deno.env.get("KWIC_RECEIPT_TEMPLATE_ID") ?? "payment_reminder_new"
+        const TEMPLATE_ID = (Deno.env.get("KWIC_RECEIPT_TEMPLATE_ID") ?? "payment_reminder_new").trim()
         // Named template variable carrying the receipt link, e.g. "Receipt" for a body
         // reading "Download your receipt: {{Receipt}}". Unset = text-only message.
         //
@@ -56,7 +59,7 @@ serve(async (req) => {
         // document header, and whatsapp.document.link / document / media_url / document_url /
         // header_document_url / media were ALL ignored — every send delivered the template's
         // approval sample instead. Variables, by contrast, are proven to substitute.
-        const URL_VAR = Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? ""
+        const URL_VAR = (Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? "").trim()
 
         // --- AuthZ: caller must be a signed-in admin, same rule as reminders-start ----
         const authHeader = req.headers.get("Authorization") ?? ""
