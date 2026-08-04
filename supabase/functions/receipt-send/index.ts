@@ -7,12 +7,17 @@
 //      preflight and the POST), so a browser can never call it.
 //   2. the api key would otherwise ship inside the public JS bundle.
 //
-// Attaching the receipt PDF depends on the template having a real document header. With the
-// text-only `payment_reminder_new`, api/v1/push silently ignored every attachment field tried
-// (media_url / document / whatsapp.document / header_document_url each returned a normal
-// message_id while delivering plain text), so KWIC_MEDIA_FIELD is unset by default and the
-// message goes out as text. Once a header template exists, set KWIC_RECEIPT_TEMPLATE_ID to it
-// and KWIC_MEDIA_FIELD to whatever key KWIC wants — no code change.
+// The receipt travels as a LINK in a body variable, not as an attachment. Attaching it is
+// impossible with this API, established by probing on 2026-08-04:
+//   - api/v1/push has no per-message document override. Against a template WITH a document
+//     header, whatsapp.document.link / document / media_url / document_url /
+//     header_document_url / media were all ignored and every send delivered the template's
+//     approval sample — i.e. one customer's receipt to everyone.
+//   - api/v1/chat IS the free-form route (session_id in the QUERY, Meta Cloud API body) but
+//     delivers nothing: free-form needs the 24h window that only a customer's own inbound
+//     message opens, and ours have not messaged us.
+// Named variables do substitute reliably, so KWIC_RECEIPT_URL_VAR names the placeholder that
+// carries the receipt URL.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
