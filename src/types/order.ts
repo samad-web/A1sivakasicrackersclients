@@ -39,6 +39,8 @@ export interface Order {
   payment_verified: boolean;
   order_completed: boolean;
   invoice_url: string | null;
+  rejoin_score: number | null;
+  rejoin_tier: 'High' | 'Medium' | 'Low' | null;
   created_at: string;
   updated_at: string;
   // Joined fields

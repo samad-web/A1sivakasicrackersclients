@@ -143,3 +143,19 @@
     50% { transform: translateY(-5px); }
   }
 }
+
+/* Recharts: kill the default black focus box that appears around active
+   pie sectors / bars when hovered or clicked. Purely visual, all charts. */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-sector,
+.recharts-rectangle,
+.recharts-layer,
+.recharts-pie,
+.recharts-pie-sector,
+.recharts-bar-rectangle,
+.recharts-wrapper svg,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible {
+  outline: none !important;
+}

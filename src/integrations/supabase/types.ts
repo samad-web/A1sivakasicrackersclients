@@ -31,6 +31,8 @@ export type Database = {
           payment_verified: boolean // Keep for now
           order_completed: boolean
           invoice_url: string | null
+          rejoin_score: number | null
+          rejoin_tier: string | null
           created_at: string
           updated_at: string
         }
@@ -50,6 +52,8 @@ export type Database = {
           payment_verified?: boolean
           order_completed?: boolean
           invoice_url?: string | null
+          rejoin_score?: number | null
+          rejoin_tier?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -69,6 +73,8 @@ export type Database = {
           payment_verified?: boolean
           order_completed?: boolean
           invoice_url?: string | null
+          rejoin_score?: number | null
+          rejoin_tier?: string | null
           created_at?: string
           updated_at?: string
         }

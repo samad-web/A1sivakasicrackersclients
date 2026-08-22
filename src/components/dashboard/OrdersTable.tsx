@@ -9,6 +9,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { OrderActions } from './OrderActions';
+import { RejoinBadge } from './RejoinBadge';
 import { Order, PaymentStatusFilter } from '@/types/order';
 import { useToggleOrderFlag, useAdvancePayment } from '@/hooks/useOrders';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -252,6 +253,7 @@ export function OrdersTable({
                     <span className="text-sm font-medium">
                       {order.scheme || 'N/A'} • <span className="text-muted-foreground">{order.district || 'N/A'}</span>
                     </span>
+                    <span className="mt-1"><RejoinBadge score={order.rejoin_score} tier={order.rejoin_tier} compact /></span>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">Payment</span>
@@ -277,6 +279,7 @@ export function OrdersTable({
                 <TableHead className="font-bold py-4">Scheme/Type</TableHead>
                 <TableHead className="font-bold py-4">Payment Mode</TableHead>
                 <TableHead className="text-right font-bold py-4">Value</TableHead>
+                <TableHead className="text-center font-bold py-4">Rejoin</TableHead>
                 <TableHead className="text-center font-bold py-4">Verified</TableHead>
                 <TableHead className="text-right font-bold py-4 pr-6">Actions</TableHead>
               </TableRow>
@@ -284,7 +287,7 @@ export function OrdersTable({
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-20">
+                  <TableCell colSpan={8} className="text-center py-20">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-lg font-medium">No results matched your search</p>
                       <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms</p>
@@ -325,6 +328,11 @@ export function OrdersTable({
                     </TableCell>
                     <TableCell className="text-right font-black text-lg py-4">
                       {formatCurrency(order.value)}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex justify-center">
+                        <RejoinBadge score={order.rejoin_score} tier={order.rejoin_tier} />
+                      </div>
                     </TableCell>
                     <TableCell className="text-center py-4">
                       <div className="flex flex-col items-center gap-1">

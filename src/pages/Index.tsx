@@ -3,6 +3,7 @@ import { Sparkles, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { AppNav } from '@/components/dashboard/AppNav';
 import { SettingsDialog } from '@/components/dashboard/SettingsDialog';
 import { SendRemindersDialog } from '@/components/dashboard/SendRemindersDialog';
 import { OrderForm } from '@/components/dashboard/OrderForm';
@@ -109,6 +110,7 @@ const Index = () => {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+              <AppNav />
               <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-500" />
                 <select

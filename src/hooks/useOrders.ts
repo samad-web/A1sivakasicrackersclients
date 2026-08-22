@@ -19,7 +19,7 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
     queryFn: async () => {
       let query = supabase
         .from('orders')
-        .select('*, monthly_payments!inner(*)', { count: 'exact' });
+        .select('*, rejoin_score, rejoin_tier, monthly_payments!inner(*)', { count: 'exact' });
 
       // Apply Month and Cycle Filter from monthly_payments table
       query = query

@@ -10,6 +10,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import Login from "./pages/Login";
 
 const Index = lazy(() => import("./pages/Index"));
+const Analysis = lazy(() => import("./pages/Analysis"));
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
+                <Route path="/analysis" element={<RequireAuth><Analysis /></RequireAuth>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
