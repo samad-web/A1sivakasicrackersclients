@@ -35,7 +35,7 @@ const MONTH_COLUMNS = [
  * PASTE YOUR DATA HERE AS AN ARRAY OF OBJECTS
  * Requirement: Keys must match the Sheet Headers you provided.
  */
-const DATA_TO_IMPORT: Record<string, any>[] = [
+const DATA_TO_IMPORT: Record<string, unknown>[] = [
     [
         {
             "Receipt No": "266",
@@ -9206,9 +9206,10 @@ async function migrate() {
         });
 
         // 3. Upsert Monthly Payments
+        type MonthlyPaymentInsert = Database['public']['Tables']['monthly_payments']['Insert'];
         const { error: paymentError } = await supabase
             .from('monthly_payments')
-            .upsert(monthlyPayments as any, { onConflict: 'order_id,month_name' });
+            .upsert(monthlyPayments as MonthlyPaymentInsert[], { onConflict: 'order_id,month_name' });
 
         if (paymentError) {
             console.error(`Error upserting payments for ${baseOrder.receipt_no}:`, JSON.stringify(paymentError, null, 2));

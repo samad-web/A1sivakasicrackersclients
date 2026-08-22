@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { Order, PaymentStatusFilter } from '@/types/order';
 import { notifyPaymentVerified } from '@/lib/paymentWebhook';
 import { toast } from 'sonner';
@@ -248,23 +249,27 @@ export function useUpsertOrder() {
       // Remove legacy and UI-only fields if present
       const { monthly_payments: _, ...tempOrder } = order as Record<string, unknown>;
 
-      const cleanOrder: Record<string, any> = {};
+      const cleanOrder: Record<string, unknown> = {};
       Object.keys(tempOrder).forEach(key => {
         if (tempOrder[key] !== undefined) {
           cleanOrder[key] = tempOrder[key];
         }
       });
 
+      // Supabase's generated row types are stricter than this dynamic bag of
+      // defined fields, so cast through the table's Insert type.
+      type OrderInsert = Database['public']['Tables']['orders']['Insert'];
+
       if (order.id) {
         const { error } = await supabase
           .from('orders')
-          .update(cleanOrder as any)
+          .update(cleanOrder as OrderInsert)
           .eq('id', order.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('orders')
-          .insert([cleanOrder as any]);
+          .insert([cleanOrder as OrderInsert]);
         if (error) throw error;
       }
     },
