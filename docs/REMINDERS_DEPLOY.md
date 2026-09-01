@@ -1,5 +1,51 @@
 # Payment-Reminder Engine — Deploy Runbook
 
+## 🚑 ACTIVATION FIX (2026-09-01) — reminders not sending, read this first
+
+Diagnosed against the **live** DB `fozdckbsznvncwkzjqsb` by probing REST + functions. Verified state:
+
+| Check | Result | Meaning |
+|---|---|---|
+| `reminder_runs` / `reminder_messages` rows | **0, ever** | No reminder has ever been queued — not even a test |
+| `reminders-start-` function (note trailing hyphen) | **deployed** (401 to anon) | Manual "Send" path is live and healthy |
+| `reminders-worker` function | **deployed** (401 to anon) | Worker is live |
+| `enqueue_reminder_run` RPC | **MISSING** (PGRST202) | Cron migration `20260803140000_reminder_cron.sql` was **never applied** → scheduled runs never fire |
+| `is_admin` RPC | returns `false` | `admins` allowlist likely **empty** → the "Send" button 403s before creating a run |
+| `orders` / `monthly_payments` via anon key | **readable** | RLS still not enabled (separate security follow-up) |
+
+**Root cause:** engine partially activated. First migration + both functions reached the live DB,
+but (a) the **cron migration was never applied**, and (b) **no admin was seeded**, so neither the
+manual nor the scheduled path could ever create a run. `config.toml` also pointed at the wrong
+project ref (`eojfokocbecrfcmpfpdf`) — **fixed in code** so future deploys target the real DB.
+
+**Minimal fix (owner access required — cannot be done from the repo):**
+
+1. **Apply the missing cron migration** to `fozdckbsznvncwkzjqsb`:
+   ```
+   supabase db push        # config.toml now points at the right project
+   ```
+   (The cron migration is now idempotent — safe to re-run.)
+2. **Seed the admin** (Studio → SQL editor):
+   ```sql
+   insert into public.admins (email) values ('OWNER_EMAIL_HERE')
+   on conflict do nothing;
+   ```
+   The admin must also exist as an Auth user (Authentication → Add user) to log in.
+3. **Confirm function secrets exist on THIS project** — `KWIC_BASE_URL`, `KWIC_API_KEY`,
+   `KWIC_TEMPLATE_ID`, `CRON_SECRET`, `MSGS_PER_MIN`, `MAX_ATTEMPTS` (see step 4 below).
+   If they were set on the old `eojfokocbecrfcmpfpdf` project, they must be re-set here.
+4. **Confirm the worker cron is scheduled here** and its `x-cron-secret` header value **exactly**
+   equals `CRON_SECRET` (a trailing newline/space silently 401s every tick — see step 6 below).
+5. **Verify the KWIC template** `payment_reminder`'s variable placeholder names match the keys
+   hardcoded in `reminders-worker/index.ts` (`"July"`, `"DavidYash"`, `"500"`).
+6. **Test:** log in as the seeded admin → Reminders → send a test to your own number → confirm it
+   **arrives on the handset** (a `message_id` = accepted by KWIC, NOT delivered — needs Meta
+   billing on the WhatsApp Business account).
+
+Everything below is the original full runbook for reference.
+
+---
+
 In-app WhatsApp payment reminders. An admin clicks **Reminders** in the dashboard header;
 an edge function enqueues everyone unpaid for the month; a cron-driven worker drains the
 queue via KWIC, paced to protect the WhatsApp quality rating.

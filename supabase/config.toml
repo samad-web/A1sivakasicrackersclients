@@ -1,4 +1,4 @@
-project_id = "eojfokocbecrfcmpfpdf"
+project_id = "fozdckbsznvncwkzjqsb"
 
 # reminders-worker is called by pg_cron, which sends no user JWT — it authenticates
 # itself with CRON_SECRET, so platform JWT verification must be off or the gateway

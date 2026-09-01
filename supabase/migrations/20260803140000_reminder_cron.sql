@@ -115,6 +115,17 @@ REVOKE ALL ON FUNCTION public.enqueue_reminder_run(TEXT, INT, TEXT) FROM PUBLIC,
 
 -- 09:00 IST = 03:30 UTC. Days 1,3,5,7,9 — the first ten days, every other day.
 -- pg_cron reads the server timezone, which is UTC on Supabase; confirm with `show timezone`.
+--
+-- Unschedule any existing job of this name first so re-applying the migration doesn't error
+-- on the duplicate (cron.schedule raises if the jobname already exists). Wrapped so it's a
+-- no-op the first time, when no such job exists yet.
+DO $$
+BEGIN
+    PERFORM cron.unschedule('reminders-enqueue');
+EXCEPTION WHEN OTHERS THEN
+    NULL; -- no existing job (or pg_cron not yet loaded in this txn) — nothing to remove
+END $$;
+
 SELECT cron.schedule(
     'reminders-enqueue',
     '30 3 1,3,5,7,9 * *',
