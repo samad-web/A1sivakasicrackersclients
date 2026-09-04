@@ -90,7 +90,12 @@ BEGIN
                 WHEN COALESCE(amount_num, 0) <= 0     THEN 'invalid amount'
            END
     FROM normalised
-    ON CONFLICT (run_id, order_id) DO NOTHING;
+    -- The unique index on (run_id, order_id) is PARTIAL (WHERE order_id IS NOT NULL, so
+    -- test rows with a NULL order_id don't collide). Postgres only uses a partial unique
+    -- index for ON CONFLICT when the clause repeats that predicate — without it the insert
+    -- errors "no unique or exclusion constraint matching the ON CONFLICT", which crashed
+    -- every scheduled enqueue run. Match the index predicate here.
+    ON CONFLICT (run_id, order_id) WHERE order_id IS NOT NULL DO NOTHING;
 
     SELECT count(*), count(*) FILTER (WHERE status = 'skipped')
       INTO v_total, v_skipped

@@ -1,5 +1,25 @@
 # Payment-Reminder Engine — Deploy Runbook
 
+## 🐛 BUG FIX (2026-09-03) — scheduled enqueue crashed every run
+
+After activation, the `reminders-enqueue` cron **failed on every scheduled run** (Sept 1 and
+Sept 3 both errored at 09:00 IST) with:
+
+```
+ERROR: there is no unique or exclusion constraint matching the ON CONFLICT
+```
+
+**Cause:** `enqueue_reminder_run()` ends its insert with `ON CONFLICT (run_id, order_id)`, but
+the unique index `reminder_messages_run_order` is **partial** (`WHERE order_id IS NOT NULL`).
+Postgres only uses a partial unique index for `ON CONFLICT` when the clause repeats that
+predicate. Without it the whole insert aborts, so no run was created and nothing sent.
+
+**Fix:** changed the clause to `ON CONFLICT (run_id, order_id) WHERE order_id IS NOT NULL
+DO NOTHING` (in `supabase/migrations/20260803140000_reminder_cron.sql`). Applied live via
+`CREATE OR REPLACE FUNCTION`, then **verified through the real pg_cron path** (a one-off
+`cron.schedule` test ran the function and returned `succeeded`), confirming future 9 AM runs
+work. No customer messages were sent during diagnosis.
+
 ## 🚑 ACTIVATION FIX (2026-09-01) — reminders not sending, read this first
 
 Diagnosed against the **live** DB `fozdckbsznvncwkzjqsb` by probing REST + functions. Verified state:
