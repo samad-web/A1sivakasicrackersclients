@@ -20,7 +20,7 @@ export const getCurrentCycleYear = (date: Date = new Date()): number => {
 
 /**
  * Returns the range of months for a given cycle year.
- * A cycle starts in November of the startYear and ends in September of the following year.
+ * A cycle runs the 12 months from November of the startYear through October of the following year.
  */
 export const getCycleRange = (startYear: number) => {
     const months = [];
@@ -34,8 +34,8 @@ export const getCycleRange = (startYear: number) => {
         });
     }
 
-    // January through September of the following year
-    for (let m = 0; m <= 8; m++) {
+    // January through October of the following year
+    for (let m = 0; m <= 9; m++) {
         const d = new Date(startYear + 1, m, 1);
         months.push({
             val: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
@@ -47,10 +47,9 @@ export const getCycleRange = (startYear: number) => {
 };
 
 /**
- * Returns the month (val) that should be selected by default for a given cycle.
- * October falls between cycles (last cycle ended in September, next starts in November),
- * so during October there is no "current" month within the active cycle - fall back to
- * the cycle's last month instead of a real-world month that isn't in range.
+ * Returns the month (val) that should be selected by default for a given cycle:
+ * today's real month when it falls within the cycle, otherwise the cycle's last month
+ * (e.g. when viewing a cycle other than the active one).
  */
 export const getDefaultMonthForCycle = (startYear: number, currentDate: Date = new Date()): string => {
     const months = getCycleRange(startYear);

@@ -27,9 +27,9 @@ export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: nu
         .eq('monthly_payments.month_name', filters.monthName);
 
       // Filter by creation date range to match the cycle year
-      // A cycle starts in November of cycleYear and ends in September of cycleYear + 1
+      // A cycle runs the 12 months from November of cycleYear through October of cycleYear + 1
       const startDate = new Date(filters.cycleYear, 10, 1).toISOString(); // Nov 1
-      const endDate = new Date(filters.cycleYear + 1, 9, 1).toISOString(); // Oct 1 (exclusive)
+      const endDate = new Date(filters.cycleYear + 1, 10, 1).toISOString(); // Nov 1 next year (exclusive)
       query = query.gte('created_at', startDate).lt('created_at', endDate);
 
       // Apply Remote Search
@@ -70,7 +70,7 @@ export function useDistinctTypes(cycleYear: number) {
     queryKey: ['distinct-types', cycleYear],
     queryFn: async () => {
       const startDate = new Date(cycleYear, 10, 1).toISOString();
-      const endDate = new Date(cycleYear + 1, 9, 1).toISOString();
+      const endDate = new Date(cycleYear + 1, 10, 1).toISOString();
 
       const { data, error } = await supabase
         .from('orders')
@@ -107,7 +107,7 @@ export function useOrderStats(monthName: string, cycleYear: number) {
 
       // Filter statistics by the cycle year's creation date range
       const startDate = new Date(cycleYear, 10, 1).toISOString();
-      const endDate = new Date(cycleYear + 1, 9, 1).toISOString();
+      const endDate = new Date(cycleYear + 1, 10, 1).toISOString();
 
       const { data, error } = await query
         .gte('orders.created_at', startDate)

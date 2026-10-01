@@ -81,7 +81,7 @@ serve(async (req) => {
         // orders ⋈ monthly_payments on the target month, payment_status <> 'Completed',
         // scoped to the active cycle by created_at. Matches src/hooks/useOrders.ts.
         const startDate = new Date(cycleYear, 10, 1).toISOString()      // Nov 1
-        const endDate = new Date(cycleYear + 1, 9, 1).toISOString()     // Oct 1 (excl.)
+        const endDate = new Date(cycleYear + 1, 10, 1).toISOString()    // Nov 1 next year (excl.)
         const { data: orders, error: qErr } = await admin
             .from("orders")
             .select("id,receipt_no,name,number,scheme,monthly_payments!inner(payment_status,month_name)")

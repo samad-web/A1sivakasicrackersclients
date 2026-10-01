@@ -38,9 +38,9 @@ BEGIN
              ELSE EXTRACT(YEAR FROM v_ist)::INT - 1
         END);
 
-    -- Cycle window, matching reminders-start: Nov 1 of the cycle year to Oct 1 of the next.
+    -- Cycle window, matching reminders-start: Nov 1 of the cycle year through Oct 31 of the next.
     v_start := make_timestamptz(v_cycle,     11, 1, 0, 0, 0, 'UTC');
-    v_end   := make_timestamptz(v_cycle + 1, 10, 1, 0, 0, 0, 'UTC');
+    v_end   := make_timestamptz(v_cycle + 1, 11, 1, 0, 0, 0, 'UTC');
 
     BEGIN
         INSERT INTO public.reminder_runs (month_name, cycle_year, is_test, status, triggered_by)

@@ -154,9 +154,9 @@ function schemeTerm(type: string | null | undefined): number {
 // Fetch every order for the cycle with ALL of its monthly_payments (left join),
 // paginating in batches of 1000 (Supabase caps each request at 1000 rows).
 async function fetchAllOrdersForCycle(cycleYear: number): Promise<Order[]> {
-  // A cycle starts in November of cycleYear and ends in September of cycleYear + 1.
+  // A cycle runs the 12 months from November of cycleYear through October of cycleYear + 1.
   const startDate = new Date(cycleYear, 10, 1).toISOString(); // Nov 1
-  const endDate = new Date(cycleYear + 1, 9, 1).toISOString(); // Oct 1 (exclusive)
+  const endDate = new Date(cycleYear + 1, 10, 1).toISOString(); // Nov 1 next year (exclusive)
 
   const BATCH = 1000;
   const all: Order[] = [];
