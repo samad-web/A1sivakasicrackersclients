@@ -19,15 +19,12 @@ import {
 import { useOrders, useOrderStats, useDistinctTypes } from '@/hooks/useOrders';
 import { PaymentStatusFilter } from '@/types/order';
 import { useResponsivePageSize } from '@/hooks/use-mobile';
-import { getCurrentCycleYear, getCycleRange, getAvailableCycles, isCycleArchived } from '@/utils/cycle';
+import { getCurrentCycleYear, getCycleRange, getAvailableCycles, isCycleArchived, getDefaultMonthForCycle } from '@/utils/cycle';
 
 
 const Index = () => {
   const [selectedCycleYear, setSelectedCycleYear] = useState(() => getCurrentCycleYear());
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [currentMonth, setCurrentMonth] = useState(() => getDefaultMonthForCycle(getCurrentCycleYear()));
 
   const isReadOnly = useMemo(() => isCycleArchived(selectedCycleYear), [selectedCycleYear]);
   const { isAdmin, signOut } = useAuth();

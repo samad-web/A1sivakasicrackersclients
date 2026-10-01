@@ -47,6 +47,23 @@ export const getCycleRange = (startYear: number) => {
 };
 
 /**
+ * Returns the month (val) that should be selected by default for a given cycle.
+ * October falls between cycles (last cycle ended in September, next starts in November),
+ * so during October there is no "current" month within the active cycle - fall back to
+ * the cycle's last month instead of a real-world month that isn't in range.
+ */
+export const getDefaultMonthForCycle = (startYear: number, currentDate: Date = new Date()): string => {
+    const months = getCycleRange(startYear);
+    const currentVal = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const match = months.find(m => m.val === currentVal);
+    if (match) return match.val;
+
+    // Not in range (the October gap, or viewing a different cycle): default to the last month.
+    return months[months.length - 1].val;
+};
+
+/**
  * Checks if a cycle is archived (completed).
  * A cycle is archived if the current date is past September of the cycle's following year.
  */
@@ -63,12 +80,13 @@ export const getAvailableCycles = (currentDate: Date = new Date()) => {
     const currentStartYear = getCurrentCycleYear(currentDate);
     const cycles = [];
 
-    // Only return the current active cycle
-    cycles.push({
-        startYear: currentStartYear,
-        label: `Cycle ${currentStartYear}-${(currentStartYear + 1).toString().slice(-2)}`,
-        isArchived: false
-    });
+    for (let startYear = currentStartYear; startYear > currentStartYear - 6; startYear--) {
+        cycles.push({
+            startYear,
+            label: `Cycle ${startYear}-${(startYear + 1).toString().slice(-2)}`,
+            isArchived: startYear < currentStartYear
+        });
+    }
 
     return cycles;
 };
