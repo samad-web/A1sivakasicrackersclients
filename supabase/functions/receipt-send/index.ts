@@ -66,21 +66,67 @@ serve(async (req) => {
         // approval sample instead. Variables, by contrast, are proven to substitute.
         const URL_VAR = (Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? "").trim()
 
-        // --- AuthZ: caller must be a signed-in admin, same rule as reminders-start ----
+        const admin = createClient(SUPABASE_URL, SERVICE_KEY)
         const authHeader = req.headers.get("Authorization") ?? ""
+        const body = await req.json().catch(() => ({}))
+
+        // Sends the template and returns KWIC's raw reply; logs every failure so it shows in
+        // the Supabase function logs (the dashboard toast alone was easy to miss).
+        const send = async (phone: string, variable: Record<string, string>) => {
+            const url = new URL("api/v1/push", KWIC_BASE_URL)
+            url.searchParams.set("api_key", KWIC_API_KEY)
+            let res: Response
+            try {
+                res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ mobile_number: phone, variable, template_id: TEMPLATE_ID }),
+                })
+            } catch (e) {
+                const error = `network: ${e instanceof Error ? e.message : String(e)}`
+                console.error(`[receipt-send] ${error}`)
+                return { error }
+            }
+            const text = await res.text()
+            let parsed: Record<string, unknown> | null = null
+            try { parsed = JSON.parse(text) } catch { /* reported below */ }
+            const error = !res.ok ? `kwic ${res.status}: ${text.slice(0, 300)}`
+                : !parsed ? `non-JSON response: ${text.slice(0, 300)}`
+                : !parsed.message_id ? "not dispatched (message_id null)"
+                : null
+            if (error) console.error(`[receipt-send] ${error} | template=${TEMPLATE_ID} vars=${Object.keys(variable).join(",")} | reply=${text.slice(0, 500)}`)
+            return { error, status: res.status, reply: parsed ?? text.slice(0, 500) }
+        }
+
+        // --- Diagnostic: dashboard "Test" with the service_role key, to the tester's own
+        // phone. Touches no order or customer data. Body: {"test_phone": "9XXXXXXXXX"}
+        if (body.test_phone) {
+            if (authHeader !== `Bearer ${SERVICE_KEY}`) return json({ error: "test_phone needs the service_role key" }, 403)
+            const phone = toKwicNumber(body.test_phone)
+            if (!phone) return json({ error: "test_phone is not an Indian mobile number" }, 400)
+            const r = await send(phone, {
+                Scheme: "TEST",
+                Amount: "1",
+                ...(URL_VAR ? { [URL_VAR]: "https://example.com/test-receipt.pdf" } : {}),
+            })
+            return json({
+                ok: !r.error, ...r,
+                config: { base_url: KWIC_BASE_URL, template_id: TEMPLATE_ID, url_var: URL_VAR || null, api_key_set: !!KWIC_API_KEY },
+            })
+        }
+
+        // --- AuthZ: caller must be a signed-in admin, same rule as reminders-start ----
         const userClient = createClient(SUPABASE_URL, ANON_KEY, {
             global: { headers: { Authorization: authHeader } },
         })
         const { data: { user } } = await userClient.auth.getUser()
         if (!user?.email) return json({ error: "Not authenticated" }, 401)
 
-        const admin = createClient(SUPABASE_URL, SERVICE_KEY)
         const { data: adminRow } = await admin
             .from("admins").select("email").eq("email", user.email).maybeSingle()
         if (!adminRow) return json({ error: "Not authorized" }, 403)
 
         // --- Inputs -------------------------------------------------------------------
-        const body = await req.json().catch(() => ({}))
         const orderId: string = body.order_id
         if (!orderId) return json({ error: "order_id is required" }, 400)
 
@@ -98,47 +144,21 @@ serve(async (req) => {
         if (!phone) return json({ skipped: true, reason: `unusable phone number "${order.number}"` })
 
         // --- Send ---------------------------------------------------------------------
-        const url = new URL("api/v1/push", KWIC_BASE_URL)
-        url.searchParams.set("api_key", KWIC_API_KEY)
-
-        let res: Response
-        try {
-            res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mobile_number: phone,
-                    // Named template variables — "Payment Confirmation! We've received your
-                    // payment for Invoice #{{Scheme}}. Amount: ₹{{Amount}}". Confirmed
-                    // dispatching live on 2026-08-03.
-                    variable: {
-                        Scheme: String(order.receipt_no),
-                        // The monthly instalment (order.scheme), NOT order.value which is the scheme total.
-                        // The receipt prints scheme too, and the two must agree.
-                        Amount: String(order.scheme),
-                        ...(URL_VAR && receiptUrl ? { [URL_VAR]: receiptUrl } : {}),
-                    },
-                    template_id: TEMPLATE_ID,
-                }),
-            })
-        } catch (e) {
-            return json({ error: `network: ${e instanceof Error ? e.message : String(e)}` }, 502)
-        }
-
-        const text = await res.text()
-        if (!res.ok) return json({ error: `kwic ${res.status}: ${text.slice(0, 200)}` }, 502)
-
-        let parsed: Record<string, unknown>
-        try { parsed = JSON.parse(text) } catch {
-            return json({ error: `non-JSON response: ${text.slice(0, 200)}` }, 502)
-        }
+        // Named template variables — "Payment Confirmation! We've received your payment for
+        // Invoice #{{Scheme}}. Amount: ₹{{Amount}}". Confirmed dispatching live on 2026-08-03.
+        const r = await send(phone, {
+            Scheme: String(order.receipt_no),
+            // The monthly instalment (order.scheme), NOT order.value which is the scheme total.
+            // The receipt prints scheme too, and the two must agree.
+            Amount: String(order.scheme),
+            ...(URL_VAR && receiptUrl ? { [URL_VAR]: receiptUrl } : {}),
+        })
         // 200 + message_id:null means accepted-but-never-dispatched. That is a failure, and
         // retrying it just re-spams the customer.
-        if (!parsed.message_id) {
-            return json({ error: "not dispatched (message_id null)", response: parsed }, 502)
-        }
+        if (r.error) return json({ error: r.error, response: r.reply }, 502)
 
-        return json({ sent: true, message_id: String(parsed.message_id), receipt_no: order.receipt_no })
+        const reply = r.reply as Record<string, unknown>
+        return json({ sent: true, message_id: String(reply.message_id), receipt_no: order.receipt_no })
     } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 500)
     }
