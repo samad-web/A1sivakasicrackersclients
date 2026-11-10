@@ -65,6 +65,23 @@ serve(async (req) => {
         // header_document_url / media were ALL ignored — every send delivered the template's
         // approval sample instead. Variables, by contrast, are proven to substitute.
         const URL_VAR = (Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? "").trim()
+        // KWIC keys each variable by the SAMPLE VALUE typed when the template was created (see
+        // reminders-worker: { "July": …, "DavidYash": … }), not by a placeholder name. A wrong
+        // key still passes KWIC's count check but substitutes nothing, so Meta drops the send
+        // (message_id null). Set to the template's samples, e.g.
+        // {"receipt_no":"309","amount":"500","url":"https://example.com/r.pdf"}
+        let VAR_KEYS = { receipt_no: "Scheme", amount: "Amount", url: URL_VAR }
+        const rawKeys = (Deno.env.get("KWIC_RECEIPT_VAR_KEYS") ?? "").trim()
+        if (rawKeys) {
+            try { VAR_KEYS = { ...VAR_KEYS, ...JSON.parse(rawKeys) } } catch {
+                return json({ error: "KWIC_RECEIPT_VAR_KEYS is not valid JSON" }, 500)
+            }
+        }
+        const buildVars = (receiptNo: string, amount: string, url: string) => ({
+            [VAR_KEYS.receipt_no]: receiptNo,
+            [VAR_KEYS.amount]: amount,
+            ...(VAR_KEYS.url && url ? { [VAR_KEYS.url]: url } : {}),
+        })
 
         const admin = createClient(SUPABASE_URL, SERVICE_KEY)
         const authHeader = req.headers.get("Authorization") ?? ""
@@ -112,16 +129,13 @@ serve(async (req) => {
             const phone = toKwicNumber(body.test_phone)
             if (!phone) return json({ error: "test_phone is not an Indian mobile number" }, 400)
             // Optional overrides so template/variable combinations can be tried without a redeploy.
-            const variable: Record<string, string> = body.variables ?? {
-                Scheme: "TEST",
-                Amount: "1",
-                ...(URL_VAR ? { [URL_VAR]: "https://example.com/test-receipt.pdf" } : {}),
-            }
+            const variable: Record<string, string> =
+                body.variables ?? buildVars("TEST", "1", "https://example.com/test-receipt.pdf")
             const templateId = String(body.template_id ?? TEMPLATE_ID)
             const r = await send(phone, variable, templateId)
             return json({
                 ok: !r.error, ...r, sent_variables: variable, sent_template: templateId,
-                config: { base_url: KWIC_BASE_URL, template_id: TEMPLATE_ID, url_var: URL_VAR || null, api_key_set: !!KWIC_API_KEY },
+                config: { base_url: KWIC_BASE_URL, template_id: TEMPLATE_ID, var_keys: VAR_KEYS, api_key_set: !!KWIC_API_KEY },
             })
         }
 
@@ -156,13 +170,9 @@ serve(async (req) => {
         // --- Send ---------------------------------------------------------------------
         // Named template variables — "Payment Confirmation! We've received your payment for
         // Invoice #{{Scheme}}. Amount: ₹{{Amount}}". Confirmed dispatching live on 2026-08-03.
-        const r = await send(phone, {
-            Scheme: String(order.receipt_no),
-            // The monthly instalment (order.scheme), NOT order.value which is the scheme total.
-            // The receipt prints scheme too, and the two must agree.
-            Amount: String(order.scheme),
-            ...(URL_VAR && receiptUrl ? { [URL_VAR]: receiptUrl } : {}),
-        })
+        // Amount is the monthly instalment (order.scheme), NOT order.value which is the scheme
+        // total. The receipt prints scheme too, and the two must agree.
+        const r = await send(phone, buildVars(String(order.receipt_no), String(order.scheme), receiptUrl))
         // 200 + message_id:null means accepted-but-never-dispatched. That is a failure, and
         // retrying it just re-spams the customer.
         if (r.error) return json({ error: r.error, response: r.reply }, 502)
