@@ -1,23 +1,9 @@
 // receipt-send: admin-triggered. Sends the payment-confirmation WhatsApp template for one
-// order via KWIC, right after that order's payment is verified in the dashboard.
+// order via WASI (KWIC was discontinued 2026-11-10), right after that order's payment is
+// verified in the dashboard. Server-side so the WASI api key never ships in the JS bundle.
 //
-// This is an edge function rather than a browser fetch for two reasons, both established by
-// probing KWIC live on 2026-08-03:
-//   1. app.kwic.in serves NO CORS headers (access-control-allow-origin is null on both the
-//      preflight and the POST), so a browser can never call it.
-//   2. the api key would otherwise ship inside the public JS bundle.
-//
-// The receipt travels as a LINK in a body variable, not as an attachment. Attaching it is
-// impossible with this API, established by probing on 2026-08-04:
-//   - api/v1/push has no per-message document override. Against a template WITH a document
-//     header, whatsapp.document.link / document / media_url / document_url /
-//     header_document_url / media were all ignored and every send delivered the template's
-//     approval sample — i.e. one customer's receipt to everyone.
-//   - api/v1/chat IS the free-form route (session_id in the QUERY, Meta Cloud API body) but
-//     delivers nothing: free-form needs the 24h window that only a customer's own inbound
-//     message opens, and ours have not messaged us.
-// Named variables do substitute reliably, so KWIC_RECEIPT_URL_VAR names the placeholder that
-// carries the receipt URL.
+// Template payment_receipt_link (approved in WASI): "...payment for Invoice #{{1}}.
+// Amount: ₹{{2}} ... Download your receipt: {{3}}". Params are positional.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -33,7 +19,7 @@ function json(body: unknown, status = 200) {
     })
 }
 
-/** orders.number is a bare 10-digit string; KWIC wants it 91-prefixed. */
+/** orders.number is a bare 10-digit string; WASI wants it 91-prefixed. */
 function toKwicNumber(raw: unknown): string | null {
     const d = String(raw ?? "").replace(/\D/g, "")
     if (d.length === 10) return `91${d}`
@@ -50,54 +36,30 @@ serve(async (req) => {
         const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
         const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
         // Trimmed: secrets pasted into the Supabase dashboard have arrived with a trailing
-        // newline before, and a template id or api key with invisible whitespace fails in
-        // ways the dashboard gives you no way to see.
-        const KWIC_BASE_URL = Deno.env.get("KWIC_BASE_URL")!.trim()
-        const KWIC_API_KEY = Deno.env.get("KWIC_API_KEY")!.trim()
-        // Distinct from KWIC_TEMPLATE_ID, which is the unpaid-reminder template.
-        const TEMPLATE_ID = (Deno.env.get("KWIC_RECEIPT_TEMPLATE_ID") ?? "payment_reminder_new").trim()
-        // Named template variable carrying the receipt link, e.g. "Receipt" for a body
-        // reading "Download your receipt: {{Receipt}}". Unset = text-only message.
-        //
-        // This is how the receipt reaches the customer, because api/v1/push has NO
-        // per-message document override: probed 2026-08-04 against a template with a real
-        // document header, and whatsapp.document.link / document / media_url / document_url /
-        // header_document_url / media were ALL ignored — every send delivered the template's
-        // approval sample instead. Variables, by contrast, are proven to substitute.
-        const URL_VAR = (Deno.env.get("KWIC_RECEIPT_URL_VAR") ?? "").trim()
-        // KWIC keys each variable by the SAMPLE VALUE typed when the template was created (see
-        // reminders-worker: { "July": …, "DavidYash": … }), not by a placeholder name. A wrong
-        // key still passes KWIC's count check but substitutes nothing, so Meta drops the send
-        // (message_id null). Set to the template's samples, e.g.
-        // {"receipt_no":"309","amount":"500","url":"https://example.com/r.pdf"}
-        let VAR_KEYS = { receipt_no: "Scheme", amount: "Amount", url: URL_VAR }
-        const rawKeys = (Deno.env.get("KWIC_RECEIPT_VAR_KEYS") ?? "").trim()
-        if (rawKeys) {
-            try { VAR_KEYS = { ...VAR_KEYS, ...JSON.parse(rawKeys) } } catch {
-                return json({ error: "KWIC_RECEIPT_VAR_KEYS is not valid JSON" }, 500)
-            }
-        }
-        const buildVars = (receiptNo: string, amount: string, url: string) => ({
-            [VAR_KEYS.receipt_no]: receiptNo,
-            [VAR_KEYS.amount]: amount,
-            ...(VAR_KEYS.url && url ? { [VAR_KEYS.url]: url } : {}),
-        })
+        // newline before, which fails invisibly.
+        const WASI_API_KEY = (Deno.env.get("WASI_API_KEY") ?? "").trim()
+        if (!WASI_API_KEY) return json({ error: "WASI_API_KEY secret is not set" }, 500)
+        const WASI_BASE_URL = (Deno.env.get("WASI_BASE_URL") ?? "https://wasi.sirahagents.com").trim()
+        // client_id is the WASI account UUID (not a secret); must match the key's account.
+        const WASI_CLIENT_ID = (Deno.env.get("WASI_CLIENT_ID") ?? "62f75306-3b3f-4b4e-91dc-cdb1ed375f8b").trim()
+        const TEMPLATE = (Deno.env.get("WASI_RECEIPT_TEMPLATE") ?? "payment_receipt_link").trim()
+        // Meta rejects an empty param, so a failed PDF upload still sends a usable message.
+        const buildParams = (receiptNo: string, amount: string, url: string) =>
+            ({ "1": receiptNo, "2": amount, "3": url || "will be shared with you shortly" })
 
         const admin = createClient(SUPABASE_URL, SERVICE_KEY)
         const authHeader = req.headers.get("Authorization") ?? ""
         const body = await req.json().catch(() => ({}))
 
-        // Sends the template and returns KWIC's raw reply; logs every failure so it shows in
-        // the Supabase function logs (the dashboard toast alone was easy to miss).
-        const send = async (phone: string, variable: Record<string, string>, templateId = TEMPLATE_ID) => {
-            const url = new URL("api/v1/push", KWIC_BASE_URL)
-            url.searchParams.set("api_key", KWIC_API_KEY)
+        // Sends the template and returns WASI's reply; logs every failure so it shows in the
+        // Supabase function logs. Errors come back as { error: { code, message } }.
+        const send = async (phone: string, params: Record<string, string>, template = TEMPLATE) => {
             let res: Response
             try {
-                res = await fetch(url, {
+                res = await fetch(new URL("api/v1/messages", WASI_BASE_URL), {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ mobile_number: phone, variable, template_id: templateId }),
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${WASI_API_KEY}` },
+                    body: JSON.stringify({ client_id: WASI_CLIENT_ID, to: phone, type: "template", template, params }),
                 })
             } catch (e) {
                 const error = `network: ${e instanceof Error ? e.message : String(e)}`
@@ -105,13 +67,13 @@ serve(async (req) => {
                 return { error }
             }
             const text = await res.text()
-            let parsed: Record<string, unknown> | null = null
+            let parsed: Record<string, any> | null = null
             try { parsed = JSON.parse(text) } catch { /* reported below */ }
-            const error = !res.ok ? `kwic ${res.status}: ${text.slice(0, 300)}`
-                : !parsed ? `non-JSON response: ${text.slice(0, 300)}`
-                : !parsed.message_id ? "not dispatched (message_id null)"
+            const error = !res.ok ? `wasi ${res.status}: ${parsed?.error?.message ?? text.slice(0, 300)}`
+                : !parsed?.id ? `unexpected response: ${text.slice(0, 300)}`
+                : parsed.status === "failed" ? `failed: ${parsed.error_reason ?? "unknown"}`
                 : null
-            if (error) console.error(`[receipt-send] ${error} | template=${templateId} vars=${Object.keys(variable).join(",")} | reply=${text.slice(0, 500)}`)
+            if (error) console.error(`[receipt-send] ${error} | template=${template} | reply=${text.slice(0, 500)}`)
             return { error, status: res.status, reply: parsed ?? text.slice(0, 500) }
         }
 
@@ -128,15 +90,8 @@ serve(async (req) => {
             }
             const phone = toKwicNumber(body.test_phone)
             if (!phone) return json({ error: "test_phone is not an Indian mobile number" }, 400)
-            // Optional overrides so template/variable combinations can be tried without a redeploy.
-            const variable: Record<string, string> =
-                body.variables ?? buildVars("TEST", "1", "https://example.com/test-receipt.pdf")
-            const templateId = String(body.template_id ?? TEMPLATE_ID)
-            const r = await send(phone, variable, templateId)
-            return json({
-                ok: !r.error, ...r, sent_variables: variable, sent_template: templateId,
-                config: { base_url: KWIC_BASE_URL, template_id: TEMPLATE_ID, var_keys: VAR_KEYS, api_key_set: !!KWIC_API_KEY },
-            })
+            const r = await send(phone, buildParams("TEST", "1", "https://example.com/test-receipt.pdf"))
+            return json({ ok: !r.error, ...r, config: { base_url: WASI_BASE_URL, client_id: WASI_CLIENT_ID, template: TEMPLATE } })
         }
 
         // --- AuthZ: caller must be a signed-in admin, same rule as reminders-start ----
@@ -168,17 +123,13 @@ serve(async (req) => {
         if (!phone) return json({ skipped: true, reason: `unusable phone number "${order.number}"` })
 
         // --- Send ---------------------------------------------------------------------
-        // Named template variables — "Payment Confirmation! We've received your payment for
-        // Invoice #{{Scheme}}. Amount: ₹{{Amount}}". Confirmed dispatching live on 2026-08-03.
         // Amount is the monthly instalment (order.scheme), NOT order.value which is the scheme
         // total. The receipt prints scheme too, and the two must agree.
-        const r = await send(phone, buildVars(String(order.receipt_no), String(order.scheme), receiptUrl))
-        // 200 + message_id:null means accepted-but-never-dispatched. That is a failure, and
-        // retrying it just re-spams the customer.
+        const r = await send(phone, buildParams(String(order.receipt_no), String(order.scheme), receiptUrl))
         if (r.error) return json({ error: r.error, response: r.reply }, 502)
 
         const reply = r.reply as Record<string, unknown>
-        return json({ sent: true, message_id: String(reply.message_id), receipt_no: order.receipt_no })
+        return json({ sent: true, message_id: String(reply.id), receipt_no: order.receipt_no })
     } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 500)
     }

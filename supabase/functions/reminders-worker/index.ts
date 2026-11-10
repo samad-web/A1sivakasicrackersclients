@@ -1,13 +1,13 @@
 // reminders-worker: cron-driven queue drainer. Each tick claims a small batch of pending
-// reminder_messages for the oldest active run and sends them via KWIC at a paced rate,
+// reminder_messages for the oldest active run and sends them via WASI at a paced rate,
 // then marks each sent/failed and completes the run when the queue is empty.
 //
 // Throughput is one knob: MSGS_PER_MIN. Spacing = 60000/MSGS_PER_MIN; the batch is sized
 // to finish within a safe per-invocation budget, so raising MSGS_PER_MIN drains faster.
 //
-// Per-message outcome is THREE-way, learned the hard way this session:
-//   200 + message_id  -> sent
-//   200 + message_id:null -> failed, NO retry (accepted-but-not-dispatched; retrying spams)
+// Per-message outcome is THREE-way:
+//   2xx + id          -> sent
+//   other 4xx, or status "failed" -> failed, NO retry (retrying spams)
 //   429 / 5xx / network -> transient: back to pending, attempts++, retry next tick until MAX
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -26,23 +26,20 @@ function json(body: unknown, status = 200) {
     })
 }
 
-/** Send one reminder via KWIC. Returns a classified outcome. */
+/** Send one reminder via WASI (KWIC discontinued 2026-11-10). Returns a classified outcome. */
 async function sendOne(
-    base: string, apiKey: string, templateId: string,
+    cfg: { base: string; apiKey: string; clientId: string; template: string },
     monthName: string, m: { phone: string; name: string; amount: string },
 ): Promise<{ kind: "sent" | "failed" | "transient"; messageId?: string; response?: unknown; error?: string }> {
-    const url = new URL("api/v1/push", base)
-    url.searchParams.set("api_key", apiKey)
     let res: Response
     try {
-        res = await fetch(url, {
+        res = await fetch(new URL("api/v1/messages", cfg.base), {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
             body: JSON.stringify({
-                mobile_number: m.phone,
-                // Named template variables — literal placeholder keys; values change, keys don't.
-                variable: { "July": monthName, "DavidYash": m.name, "500": m.amount },
-                template_id: templateId,
+                client_id: cfg.clientId, to: m.phone, type: "template", template: cfg.template,
+                // payment_reminder: "Reminder: {{1}} Payment Due. Dear {{2}}, ... ₹{{3}} ..."
+                params: { "1": monthName, "2": m.name, "3": m.amount },
             }),
         })
     } catch (e) {
@@ -50,17 +47,17 @@ async function sendOne(
     }
     const text = await res.text()
     if (res.status === 429 || res.status >= 500) {
-        return { kind: "transient", error: `kwic ${res.status}: ${text.slice(0, 200)}` }
+        return { kind: "transient", error: `wasi ${res.status}: ${text.slice(0, 200)}` }
     }
     if (!res.ok) {
-        return { kind: "failed", error: `kwic ${res.status}: ${text.slice(0, 200)}` }
+        return { kind: "failed", error: `wasi ${res.status}: ${text.slice(0, 200)}` }
     }
     let parsed: Record<string, unknown>
     try { parsed = JSON.parse(text) } catch { return { kind: "failed", error: `non-JSON: ${text.slice(0, 200)}`, response: { raw: text } } }
-    if (!parsed.message_id) {
-        return { kind: "failed", error: "not dispatched (message_id null)", response: parsed }
+    if (!parsed.id || parsed.status === "failed") {
+        return { kind: "failed", error: `not sent: ${parsed.error_reason ?? "no message id"}`, response: parsed }
     }
-    return { kind: "sent", messageId: String(parsed.message_id), response: parsed }
+    return { kind: "sent", messageId: String(parsed.id), response: parsed }
 }
 
 serve(async (req) => {
@@ -81,9 +78,14 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    const KWIC_BASE_URL = Deno.env.get("KWIC_BASE_URL")!
-    const KWIC_API_KEY = Deno.env.get("KWIC_API_KEY")!
-    const KWIC_TEMPLATE_ID = Deno.env.get("KWIC_TEMPLATE_ID")!
+    const WASI = {
+        base: (Deno.env.get("WASI_BASE_URL") ?? "https://wasi.sirahagents.com").trim(),
+        apiKey: (Deno.env.get("WASI_API_KEY") ?? "").trim(),
+        // WASI account UUID, not a secret; must match the key's account.
+        clientId: (Deno.env.get("WASI_CLIENT_ID") ?? "62f75306-3b3f-4b4e-91dc-cdb1ed375f8b").trim(),
+        template: (Deno.env.get("WASI_REMINDER_TEMPLATE") ?? "payment_reminder").trim(),
+    }
+    if (!WASI.apiKey) return json({ error: "WASI_API_KEY secret is not set" }, 500)
     const MSGS_PER_MIN = Math.max(1, Number(Deno.env.get("MSGS_PER_MIN") ?? "12"))
     const MAX_ATTEMPTS = Math.max(1, Number(Deno.env.get("MAX_ATTEMPTS") ?? "3"))
 
@@ -118,7 +120,7 @@ serve(async (req) => {
             }
             if (i > 0) await sleep(spacing)
             const m = messages[i]
-            const out = await sendOne(KWIC_BASE_URL, KWIC_API_KEY, KWIC_TEMPLATE_ID, run.month_name, m)
+            const out = await sendOne(WASI, run.month_name, m)
 
             if (out.kind === "sent") {
                 await admin.from("reminder_messages").update({

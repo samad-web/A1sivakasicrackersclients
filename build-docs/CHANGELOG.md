@@ -1,5 +1,10 @@
 # Changelog
 
+## fix(whatsapp): KWIC → WASI (2026-11-10)
+- `receipt-send` and `reminders-worker` now send via WASI templates `payment_receipt_link` / `payment_reminder`.
+- Error toast shows WASI's `error.message`. Missing receipt URL → placeholder text (Meta rejects empty params).
+- **Deploy:** set secret `WASI_API_KEY`, redeploy both functions. `docs/RECEIPT_DEPLOY.md`, `docs/REMINDERS_DEPLOY.md`, `scripts/send-*.mjs` still describe KWIC (stale).
+
 ## fix(dashboard-layout) (2026-11-10)
 - Orders table: fixed column widths (`table-fixed`), address wraps; no sideways scroll, Actions always visible. Desktop table from `xl` (1280px), cards below.
 - Header: actions in no-wrap groups so Logout never wraps alone; Refresh icon-only; title no-wrap.

@@ -19,6 +19,13 @@ Results (2026-11-10):
 ## fix(dashboard-layout)
 - Full suite 22/22. Layout verified manually by user on localhost (archived + active cycle), 2026-11-10.
 
+## fix(whatsapp) KWIC → WASI
+Live API tests to own number only (no customer data), 2026-11-10:
+- `GET /api/v1/templates` + `/account`: key valid, connected, quality GREEN, both templates approved.
+- `payment_receipt_link` and `payment_reminder` sends: 201 → status **delivered**.
+- Unknown template: 404 `{error:{code,message}}` — shape the function parses.
+- Not run: the edge functions themselves after deploy (no Deno locally) — verify via Test panel `{"test_phone": "..."}` + one real payment verify.
+
 ## passbook-invoice
 `src/lib/passbook.test.ts`: AC1 layout text, AC2 rows/statuses/10-month, AC3 totals, AC4 advance, AC5 phone + no mojibake, edges (no payments, status casing, cash ref, unknown Diwali year), security (HTML escaping).
 
