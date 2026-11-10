@@ -101,7 +101,14 @@ serve(async (req) => {
         // --- Diagnostic: dashboard "Test" with the service_role key, to the tester's own
         // phone. Touches no order or customer data. Body: {"test_phone": "9XXXXXXXXX"}
         if (body.test_phone) {
-            if (authHeader !== `Bearer ${SERVICE_KEY}`) return json({ error: "test_phone needs the service_role key" }, 403)
+            // verify_jwt = true (config.toml): the gateway has already checked the signature,
+            // so the role claim can be trusted.
+            const token = authHeader.replace(/^Bearer\s+/i, "")
+            let role = ""
+            try { role = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role ?? "" } catch { /* not a JWT */ }
+            if (role !== "service_role" && token !== SERVICE_KEY) {
+                return json({ error: `test_phone needs the service_role key (got role "${role || "none"}")` }, 403)
+            }
             const phone = toKwicNumber(body.test_phone)
             if (!phone) return json({ error: "test_phone is not an Indian mobile number" }, 400)
             const r = await send(phone, {
