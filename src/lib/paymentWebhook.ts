@@ -12,6 +12,7 @@
  * Best-effort throughout: a failed receipt must never roll back a payment that was verified.
  */
 import { toast } from 'sonner';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Order } from '@/types/order';
 import { supabase } from '@/integrations/supabase/client';
 import { buildPassbook } from '@/lib/passbook';
@@ -64,8 +65,16 @@ export async function notifyPaymentVerified(
   });
 
   if (error) {
-    console.error(`[Receipt] ${order.receipt_no}:`, error);
-    toast.error(`Payment saved, but the WhatsApp confirmation failed: ${error.message}`);
+    // supabase-js only says "non-2xx status code"; the function's JSON body has the real reason.
+    let reason = error.message;
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      if (body?.error) reason = String(body.error);
+      console.error(`[Receipt] ${order.receipt_no}: HTTP ${error.context.status}`, body);
+    } else {
+      console.error(`[Receipt] ${order.receipt_no}:`, error);
+    }
+    toast.error(`Payment saved, but the WhatsApp confirmation failed: ${reason}`, { duration: 15000 });
     return;
   }
   if (data?.skipped) {
