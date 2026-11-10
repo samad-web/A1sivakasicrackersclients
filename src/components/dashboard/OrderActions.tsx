@@ -1,4 +1,4 @@
-import { Edit2, ExternalLink, MoreVertical, Trash2 } from 'lucide-react';
+import { CopyPlus, Edit2, ExternalLink, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import { Order } from '@/types/order';
 import { OrderForm } from './OrderForm';
 import { useState } from 'react';
 import { useDeleteOrder } from '@/hooks/useOrders';
+import { RejoinDialog } from './RejoinDialog';
 
 interface OrderActionsProps {
   order: Order;
@@ -38,6 +39,7 @@ interface OrderActionsProps {
 export function OrderActions({ order, isReadOnly }: OrderActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isRejoinOpen, setIsRejoinOpen] = useState(false);
   const deleteMutation = useDeleteOrder();
   const isLocked = order.order_completed;
 
@@ -63,7 +65,13 @@ export function OrderActions({ order, isReadOnly }: OrderActionsProps) {
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
+              {isReadOnly && (
+                <DropdownMenuItem onSelect={() => setIsRejoinOpen(true)}>
+                  <CopyPlus className="mr-2 h-4 w-4" />
+                  Add to Current Cycle
+                </DropdownMenuItem>
+              )}
               <DialogTrigger asChild>
                 <DropdownMenuItem disabled={isLocked || isReadOnly}>
                   <Edit2 className="mr-2 h-4 w-4" />
@@ -121,6 +129,8 @@ export function OrderActions({ order, isReadOnly }: OrderActionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RejoinDialog orderIds={[order.id]} open={isRejoinOpen} onOpenChange={setIsRejoinOpen} />
     </div>
   );
 }

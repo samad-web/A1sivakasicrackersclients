@@ -13,8 +13,21 @@ import { RejoinBadge } from './RejoinBadge';
 import { Order, PaymentStatusFilter } from '@/types/order';
 import { useToggleOrderFlag, useAdvancePayment } from '@/hooks/useOrders';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, ChevronRight, CopyPlus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { RejoinDialog } from './RejoinDialog';
+import { cycleLabel } from '@/utils/cycle';
+
+function PreviousReceipt({ order }: { order: Order }) {
+  if (!order.previous_receipt_no) return null;
+  return (
+    <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+      Prev #{order.previous_receipt_no}
+      {order.previous_cycle_year != null && ` · ${cycleLabel(order.previous_cycle_year)}`}
+    </p>
+  );
+}
 
 interface OrdersTableProps {
   orders: Order[];
@@ -36,6 +49,7 @@ interface OrdersTableProps {
   cycleMonths: { val: string; label: string }[];
   currentMonth: string;
   isReadOnly?: boolean;
+  onSelectAllMatching?: () => Promise<string[]>;
 }
 
 export function OrdersTable({
@@ -58,11 +72,60 @@ export function OrdersTable({
   cycleMonths,
   currentMonth,
   isReadOnly,
+  onSelectAllMatching,
 }: OrdersTableProps) {
   const toggleFlag = useToggleOrderFlag();
   const advancePayment = useAdvancePayment();
   const [advanceOrder, setAdvanceOrder] = useState<Order | null>(null);
   const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+
+  // Rejoin selection: only past (read-only) cycles can be moved into the current one.
+  const selectable = !!isReadOnly;
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isRejoinOpen, setIsRejoinOpen] = useState(false);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
+
+  // A changed view hides rows, so drop the selection rather than act on rows staff can't see.
+  const viewKey = `${currentMonth}|${searchQuery}|${paymentFilter}|${typeFilter}|${isReadOnly}`;
+  const viewKeyRef = useRef(viewKey);
+  viewKeyRef.current = viewKey;
+  useEffect(() => {
+    setSelected(new Set());
+  }, [viewKey]);
+
+  const pageIds = orders.map(o => o?.id).filter((id): id is string => !!id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every(id => selected.has(id));
+
+  const togglePage = () => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      pageIds.forEach(id => (allPageSelected ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllMatching = async () => {
+    if (!onSelectAllMatching) return;
+    setIsSelectingAll(true);
+    const requestedFor = viewKey;
+    try {
+      const ids = await onSelectAllMatching();
+      if (viewKeyRef.current === requestedFor) setSelected(new Set(ids));
+    } catch (error) {
+      toast.error('Could not load all matching records');
+      console.error(error);
+    } finally {
+      setIsSelectingAll(false);
+    }
+  };
 
   // Get months from current month onwards in the cycle
   const currentMonthIndex = cycleMonths.findIndex(m => m.val === currentMonth);
@@ -183,6 +246,36 @@ export function OrdersTable({
         </div>
       </div>
 
+      {selectable && pageIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm px-1">
+          <label className="flex items-center gap-2 font-medium lg:hidden">
+            <input
+              type="checkbox"
+              checked={allPageSelected}
+              onChange={togglePage}
+              aria-label="Select all on this page"
+              className="h-4 w-4 rounded border-primary/30 text-primary focus:ring-primary"
+            />
+            Select all on page
+          </label>
+          {allPageSelected && totalCount > selected.size && onSelectAllMatching && (
+            <span className="text-muted-foreground">
+              All {pageIds.length} on this page selected.{' '}
+              <button
+                onClick={selectAllMatching}
+                disabled={isSelectingAll}
+                className="font-bold text-primary hover:underline disabled:opacity-50"
+              >
+                {isSelectingAll ? 'Selecting...' : `Select all ${totalCount} matching`}
+              </button>
+            </span>
+          )}
+          {selected.size > pageIds.length && selected.size >= totalCount && (
+            <span className="text-muted-foreground">All {selected.size} matching records selected.</span>
+          )}
+        </div>
+      )}
+
       {/* Mobile/Tablet Card View (Hidden on large screens) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
         {(!orders || orders.length === 0) ? (
@@ -204,8 +297,18 @@ export function OrdersTable({
                   </div>
                 )}
                 <div className="flex justify-between items-start">
-                  <div>
+                  {selectable && order.id && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(order.id)}
+                      onChange={() => toggleOne(order.id)}
+                      aria-label={`Select ${order.name}`}
+                      className="h-5 w-5 mr-3 mt-1 shrink-0 rounded border-primary/30 text-primary focus:ring-primary"
+                    />
+                  )}
+                  <div className="flex-1">
                     <p className="font-mono text-[10px] font-bold text-primary/60">{order.receipt_no || 'No Receipt'}</p>
+                    <PreviousReceipt order={order} />
                     <h3 className="font-bold text-lg leading-tight mt-0.5">{order.name || 'Unknown'}</h3>
                     <p className="text-sm text-muted-foreground">{order.number || 'No Number'}</p>
                     {order.customer_address && (
@@ -274,6 +377,17 @@ export function OrdersTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-table-header/50 border-b hover:bg-table-header/50">
+                {selectable && (
+                  <TableHead className="w-10 py-4">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={togglePage}
+                      aria-label="Select all on this page"
+                      className="h-4 w-4 rounded border-primary/30 text-primary focus:ring-primary"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-[120px] font-bold py-4">Receipt No</TableHead>
                 <TableHead className="font-bold py-4">Customer / Address</TableHead>
                 <TableHead className="font-bold py-4">Scheme/Type</TableHead>
@@ -287,7 +401,7 @@ export function OrdersTable({
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-20">
+                  <TableCell colSpan={selectable ? 9 : 8} className="text-center py-20">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-lg font-medium">No results matched your search</p>
                       <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms</p>
@@ -298,8 +412,20 @@ export function OrdersTable({
               ) : (
                 orders.map((order) => (
                   <TableRow key={order.id} className="group hover:bg-primary/[0.02] transition-colors border-b last:border-0">
+                    {selectable && (
+                      <TableCell className="py-4">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(order.id)}
+                          onChange={() => toggleOne(order.id)}
+                          aria-label={`Select ${order.name}`}
+                          className="h-4 w-4 rounded border-primary/30 text-primary focus:ring-primary"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-mono text-xs font-black text-muted-foreground py-4">
                       {order.receipt_no}
+                      <PreviousReceipt order={order} />
                     </TableCell>
                     <TableCell className="py-4">
                       <div>
@@ -417,6 +543,26 @@ export function OrdersTable({
           </div>
         )
       }
+      {selectable && selected.size > 0 && (
+        <div className="sticky bottom-4 z-40 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 shadow-lg">
+          <span className="text-sm font-bold">{selected.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Clear</Button>
+            <Button size="sm" onClick={() => setIsRejoinOpen(true)}>
+              <CopyPlus className="mr-2 h-4 w-4" />
+              Add to Current Cycle
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <RejoinDialog
+        orderIds={[...selected]}
+        open={isRejoinOpen}
+        onOpenChange={setIsRejoinOpen}
+        onDone={() => setSelected(new Set())}
+      />
+
       {/* Advance Payment Dialog */}
       <Dialog open={!!advanceOrder} onOpenChange={(open) => { if (!open) { setAdvanceOrder(null); setSelectedMonths([]); } }}>
         <DialogContent className="sm:max-w-xs">

@@ -71,6 +71,9 @@ export const isCycleArchived = (startYear: number, currentDate: Date = new Date(
     return startYear < activeYear;
 };
 
+export const cycleLabel = (startYear: number) =>
+    `Cycle ${startYear}-${(startYear + 1).toString().slice(-2)}`;
+
 /**
  * Generates a list of cycles to show in the selector.
  * Shows the current active cycle and the last 5 archived cycles.
@@ -82,7 +85,7 @@ export const getAvailableCycles = (currentDate: Date = new Date()) => {
     for (let startYear = currentStartYear; startYear > currentStartYear - 6; startYear--) {
         cycles.push({
             startYear,
-            label: `Cycle ${startYear}-${(startYear + 1).toString().slice(-2)}`,
+            label: cycleLabel(startYear),
             isArchived: startYear < currentStartYear
         });
     }

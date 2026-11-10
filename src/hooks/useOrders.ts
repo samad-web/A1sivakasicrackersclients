@@ -13,47 +13,68 @@ export interface OrdersFilters {
   typeFilter?: string;
 }
 
+function buildOrdersQuery(filters: OrdersFilters, select: string, count?: 'exact') {
+  let query = supabase
+    .from('orders')
+    .select(select, count ? { count } : undefined);
+
+  // Apply Month and Cycle Filter from monthly_payments table
+  query = query
+    .eq('monthly_payments.month_name', filters.monthName);
+
+  // Filter by creation date range to match the cycle year
+  // A cycle runs the 12 months from November of cycleYear through October of cycleYear + 1
+  const startDate = new Date(filters.cycleYear, 10, 1).toISOString(); // Nov 1
+  const endDate = new Date(filters.cycleYear + 1, 10, 1).toISOString(); // Nov 1 next year (exclusive)
+  query = query.gte('created_at', startDate).lt('created_at', endDate);
+
+  // Apply Remote Search
+  if (filters.searchQuery) {
+    query = query.or(`name.ilike.%${filters.searchQuery}%,receipt_no.ilike.%${filters.searchQuery}%,number.ilike.%${filters.searchQuery}%`);
+  }
+
+  // Apply Payment Filter
+  if (filters.paymentFilter === 'verified') {
+    query = query.eq('monthly_payments.payment_status', 'Completed');
+  } else if (filters.paymentFilter === 'unverified') {
+    query = query.neq('monthly_payments.payment_status', 'Completed');
+  }
+
+  // Apply Type Filter (Partial match for backward compatibility with "Month" vs "Months")
+  if (filters.typeFilter && filters.typeFilter !== 'all') {
+    query = query.ilike('type', `${filters.typeFilter}%`);
+  }
+
+  // Sorting: scheme months desc (12, 10, 8, 6), then receipt_no asc within each group
+  return query
+    .order('type_sort', { ascending: false })
+    .order('receipt_no', { ascending: true });
+}
+
+// Supabase caps a response at 1000 rows, so page through to get every match.
+export async function fetchMatchingOrderIds(filters: OrdersFilters): Promise<string[]> {
+  const pageSize = 1000;
+  const ids: string[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildOrdersQuery(filters, 'id, monthly_payments!inner(month_name)')
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as unknown as { id: string }[];
+    ids.push(...rows.map(r => r.id));
+    if (rows.length < pageSize) return ids;
+  }
+}
+
 export function useOrders(filters: OrdersFilters, page: number = 0, pageSize: number = 50) {
   return useQuery({
     queryKey: ['orders', filters, page, pageSize],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let query = supabase
-        .from('orders')
-        .select('*, rejoin_score, rejoin_tier, monthly_payments!inner(*)', { count: 'exact' });
-
-      // Apply Month and Cycle Filter from monthly_payments table
-      query = query
-        .eq('monthly_payments.month_name', filters.monthName);
-
-      // Filter by creation date range to match the cycle year
-      // A cycle runs the 12 months from November of cycleYear through October of cycleYear + 1
-      const startDate = new Date(filters.cycleYear, 10, 1).toISOString(); // Nov 1
-      const endDate = new Date(filters.cycleYear + 1, 10, 1).toISOString(); // Nov 1 next year (exclusive)
-      query = query.gte('created_at', startDate).lt('created_at', endDate);
-
-      // Apply Remote Search
-      if (filters.searchQuery) {
-        query = query.or(`name.ilike.%${filters.searchQuery}%,receipt_no.ilike.%${filters.searchQuery}%,number.ilike.%${filters.searchQuery}%`);
-      }
-
-      // Apply Payment Filter
-      if (filters.paymentFilter === 'verified') {
-        query = query.eq('monthly_payments.payment_status', 'Completed');
-      } else if (filters.paymentFilter === 'unverified') {
-        query = query.neq('monthly_payments.payment_status', 'Completed');
-      }
-
-      // Apply Type Filter (Partial match for backward compatibility with "Month" vs "Months")
-      if (filters.typeFilter && filters.typeFilter !== 'all') {
-        query = query.ilike('type', `${filters.typeFilter}%`);
-      }
-
-      // Sorting: scheme months desc (12, 10, 8, 6), then receipt_no asc within each group
-      const { data, error, count } = await query
-        .order('type_sort', { ascending: false })
-        .order('receipt_no', { ascending: true })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
+      const { data, error, count } = await buildOrdersQuery(
+        filters,
+        '*, rejoin_score, rejoin_tier, monthly_payments!inner(*)',
+        'exact'
+      ).range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (error) throw error;
 
@@ -280,6 +301,37 @@ export function useUpsertOrder() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to save order');
+      console.error(error);
+    },
+  });
+}
+
+export interface RejoinResult {
+  source_order_id: string;
+  name: string | null;
+  old_receipt_no: string | null;
+  new_order_id: string | null;
+  new_receipt_no: string | null;
+  skip_reason: 'not_found' | 'already_current' | 'already_in_cycle' | null;
+  existing_receipt_no: string | null;
+}
+
+export function useRejoinOrders() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderIds: string[]) => {
+      const { data, error } = await supabase.rpc('rejoin_orders', { p_order_ids: orderIds });
+      if (error) throw error;
+      return (data ?? []) as RejoinResult[];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['distinct-types'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to add to current cycle');
       console.error(error);
     },
   });

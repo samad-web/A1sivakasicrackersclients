@@ -33,6 +33,9 @@ export type Database = {
           invoice_url: string | null
           rejoin_score: number | null
           rejoin_tier: string | null
+          previous_order_id: string | null
+          previous_receipt_no: string | null
+          previous_cycle_year: number | null
           created_at: string
           updated_at: string
         }
@@ -219,6 +222,28 @@ export type Database = {
           month_sent: string
           is_verified_sent: boolean
         } | null
+      }
+      advance_payment_verification: {
+        Args: {
+          p_order_id: string
+          p_month_names: string[]
+          p_is_verified: boolean
+        }
+        Returns: Json
+      }
+      rejoin_orders: {
+        Args: {
+          p_order_ids: string[]
+        }
+        Returns: {
+          source_order_id: string
+          name: string | null
+          old_receipt_no: string | null
+          new_order_id: string | null
+          new_receipt_no: string | null
+          skip_reason: string | null
+          existing_receipt_no: string | null
+        }[]
       }
     }
     Enums: {

@@ -1,0 +1,18 @@
+# Project Memory
+
+## Constraints and conventions
+- Cycle = Nov 1 of year Y to Nov 1 of Y+1, decided by `orders.created_at` (`src/utils/cycle.ts`, `useOrders`).
+- Archived cycles are read-only in the UI (`isReadOnly` from `isCycleArchived`).
+- `initialize_monthly_payments` trigger creates 12 `Empty` monthly rows on order insert.
+- `receipt_no` is not unique alone; DB unique key is `(receipt_no, current_month, name, number)`.
+- No Docker in this project (user decision 2026-11-10). SQL tests in `supabase/tests/` run in the Supabase SQL editor and roll back.
+- Dev server: `npm run dev` → http://localhost:8080 (first start re-optimizes deps, can be slow).
+
+## Decisions
+- 2026-11-10: Rejoin = new order row (copy), not moving the old one. Keeps past-cycle history and stats intact.
+- 2026-11-10: Rejoined orders get the next receipt number in the active cycle (DB function, advisory lock). Old receipt + cycle stored on the new row and shown in the table.
+- 2026-11-10: Bulk rejoin skips customers whose phone is already in the active cycle and reports them.
+- 2026-11-10: Select all = page, then "all N matching" across pages.
+
+## Open questions / known issues
+- "Add Record" saves `current_month` as a month name (e.g. `November`), but `invoice-proxy` expects `YYYY-MM`. Pre-existing; not fixed here.

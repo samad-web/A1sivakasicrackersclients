@@ -41,6 +41,9 @@ export interface Order {
   invoice_url: string | null;
   rejoin_score: number | null;
   rejoin_tier: 'High' | 'Medium' | 'Low' | null;
+  previous_order_id?: string | null;
+  previous_receipt_no?: string | null;
+  previous_cycle_year?: number | null;
   created_at: string;
   updated_at: string;
   // Joined fields

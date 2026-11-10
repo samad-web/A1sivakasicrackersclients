@@ -16,7 +16,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useOrders, useOrderStats, useDistinctTypes } from '@/hooks/useOrders';
+import { useOrders, useOrderStats, useDistinctTypes, fetchMatchingOrderIds } from '@/hooks/useOrders';
 import { PaymentStatusFilter } from '@/types/order';
 import { useResponsivePageSize } from '@/hooks/use-mobile';
 import { getCurrentCycleYear, getCycleRange, getAvailableCycles, isCycleArchived, getDefaultMonthForCycle } from '@/utils/cycle';
@@ -218,6 +218,13 @@ const Index = () => {
             cycleMonths={months}
             currentMonth={currentMonth}
             isReadOnly={isReadOnly}
+            onSelectAllMatching={() => fetchMatchingOrderIds({
+              monthName,
+              cycleYear: selectedCycleYear,
+              searchQuery,
+              paymentFilter,
+              typeFilter
+            })}
           />
         </div>
       </main>
