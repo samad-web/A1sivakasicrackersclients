@@ -72,7 +72,7 @@ serve(async (req) => {
 
         // Sends the template and returns KWIC's raw reply; logs every failure so it shows in
         // the Supabase function logs (the dashboard toast alone was easy to miss).
-        const send = async (phone: string, variable: Record<string, string>) => {
+        const send = async (phone: string, variable: Record<string, string>, templateId = TEMPLATE_ID) => {
             const url = new URL("api/v1/push", KWIC_BASE_URL)
             url.searchParams.set("api_key", KWIC_API_KEY)
             let res: Response
@@ -80,7 +80,7 @@ serve(async (req) => {
                 res = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ mobile_number: phone, variable, template_id: TEMPLATE_ID }),
+                    body: JSON.stringify({ mobile_number: phone, variable, template_id: templateId }),
                 })
             } catch (e) {
                 const error = `network: ${e instanceof Error ? e.message : String(e)}`
@@ -94,7 +94,7 @@ serve(async (req) => {
                 : !parsed ? `non-JSON response: ${text.slice(0, 300)}`
                 : !parsed.message_id ? "not dispatched (message_id null)"
                 : null
-            if (error) console.error(`[receipt-send] ${error} | template=${TEMPLATE_ID} vars=${Object.keys(variable).join(",")} | reply=${text.slice(0, 500)}`)
+            if (error) console.error(`[receipt-send] ${error} | template=${templateId} vars=${Object.keys(variable).join(",")} | reply=${text.slice(0, 500)}`)
             return { error, status: res.status, reply: parsed ?? text.slice(0, 500) }
         }
 
@@ -111,13 +111,16 @@ serve(async (req) => {
             }
             const phone = toKwicNumber(body.test_phone)
             if (!phone) return json({ error: "test_phone is not an Indian mobile number" }, 400)
-            const r = await send(phone, {
+            // Optional overrides so template/variable combinations can be tried without a redeploy.
+            const variable: Record<string, string> = body.variables ?? {
                 Scheme: "TEST",
                 Amount: "1",
                 ...(URL_VAR ? { [URL_VAR]: "https://example.com/test-receipt.pdf" } : {}),
-            })
+            }
+            const templateId = String(body.template_id ?? TEMPLATE_ID)
+            const r = await send(phone, variable, templateId)
             return json({
-                ok: !r.error, ...r,
+                ok: !r.error, ...r, sent_variables: variable, sent_template: templateId,
                 config: { base_url: KWIC_BASE_URL, template_id: TEMPLATE_ID, url_var: URL_VAR || null, api_key_set: !!KWIC_API_KEY },
             })
         }
