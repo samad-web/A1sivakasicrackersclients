@@ -11,14 +11,14 @@
  * verifies a payment.
  */
 import { supabase } from '@/integrations/supabase/client';
-import type { ReceiptData } from './receiptTemplate';
+import type { PassbookData } from './passbook';
 
 /** A4 at 96dpi. The template is authored at these proportions. */
 const A4_PX = { width: 794, height: 1123 };
 const BUCKET = 'receipts';
 
 /** Render the receipt to a single-page A4 PDF. Browser-only — needs a DOM. */
-export async function generateReceiptPdf(data: Partial<ReceiptData>): Promise<Blob> {
+export async function generateReceiptPdf(data: PassbookData): Promise<Blob> {
     const [{ default: html2canvas }, { jsPDF }, { renderReceiptHtml }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
@@ -43,8 +43,8 @@ export async function generateReceiptPdf(data: Partial<ReceiptData>): Promise<Bl
         // The @font-face rules are base64 data URIs, so this resolves without network access
         // — but rasterising before it settles would fall back to a default face.
         await doc.fonts?.ready;
-        // The template's inline fit-to-page pass also runs on fonts.ready; give it a frame to
-        // apply its transforms, or a long address gets captured mid-overflow.
+        // Let the logo decode and layout settle before rasterising.
+        await Promise.all(Array.from(doc.images).map((img) => img.decode().catch(() => undefined)));
         await new Promise((r) => requestAnimationFrame(() => r(null)));
 
         const target = doc.getElementById('page_0') ?? doc.body;

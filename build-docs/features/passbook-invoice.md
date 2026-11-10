@@ -1,6 +1,13 @@
 # Feature: Passbook Invoice (new invoice format)
 
-Status: DRAFT, awaiting approval. Reference: client PDF `New_Chit_Finance_Invoice.pdf` (2026-11-10).
+Status: approved, implemented. Reference: client `New_Chit_Finance_Invoice.html` + `.pdf` (2026-11-10).
+
+## As built
+- `src/lib/passbook.ts`: `buildPassbook(order, payments, today)` — rows, statuses, totals, Diwali (table `DIWALI` keyed by year; add each new year).
+- `src/lib/receiptTemplate.ts`: client HTML ported 1:1 (no-print toolbar and Font Awesome dropped; status colours made to win over `td` colour as in the PDF).
+- Logo: the app's existing logo (`src/lib/invoiceLogo.ts`), also used as watermark (user decision).
+- Fonts: Arial, because the client's reference PDF was rendered in Arial (Inter/Outfit made the header wrap). Watermark: logo inverted + hue-rotated so its black background disappears.
+- Paid-on ref: Gpay/PhonePe/Paytm → `UPI`, others shown as stored (e.g. `Cash`).
 
 ## Purpose
 Replace the single-month receipt with a passbook-style "N-MONTH CHIT INVOICE" that shows the customer's whole plan: every installment, what is paid, what is due, and balances.

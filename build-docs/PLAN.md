@@ -14,5 +14,8 @@ Current task: let staff move a past-cycle customer into the active cycle.
 ## Features (prioritized)
 1. [Rejoin Next Cycle](features/rejoin-next-cycle.md): "Add to Current Cycle" per row, plus checkbox select / select-all bulk add on archived cycles.
 
+2. [Passbook Invoice](features/passbook-invoice.md): new client invoice format for payment receipts.
+
 ## Build order
 1. Rejoin Next Cycle (no dependencies).
+2. Passbook Invoice (no dependencies).

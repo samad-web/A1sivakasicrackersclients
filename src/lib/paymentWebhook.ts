@@ -14,29 +14,7 @@
 import { toast } from 'sonner';
 import { Order } from '@/types/order';
 import { supabase } from '@/integrations/supabase/client';
-
-/** Splits the single customer_address string back into the two lines the receipt expects. */
-function splitAddress(order: Order): { addressLine1: string; addressLine2: string } {
-  const parts = (order.customer_address || '').split(',').map((p) => p.trim());
-  let pincode = '';
-  let state = '';
-
-  const pinIndex = parts.findIndex((p) => p.startsWith('Pin - '));
-  if (pinIndex !== -1) {
-    pincode = parts[pinIndex].replace('Pin - ', '');
-    if (pinIndex > 0) state = parts[pinIndex - 1];
-  }
-
-  // filter(Boolean) drops the empty segments left by ",," runs in customer_address, which
-  // otherwise print as a trailing ", ," on the receipt.
-  const line1Parts = parts
-    .filter((_, i) => i !== pinIndex && (pinIndex === -1 || i !== pinIndex - 1))
-    .filter(Boolean);
-  return {
-    addressLine1: line1Parts.join(', '),
-    addressLine2: [order.district, state, pincode].filter(Boolean).join(', '),
-  };
-}
+import { buildPassbook } from '@/lib/passbook';
 
 export interface PaymentWebhookOptions {
   /** Month(s) the payment covers. One entry for a normal verify, many for an advance. */
@@ -45,26 +23,14 @@ export interface PaymentWebhookOptions {
   advanceMonths?: number;
 }
 
-/**
- * Field-for-field the payload the n8n receipt template was written against, so the rendered
- * receipt is identical to the ones customers already have.
- */
-function buildReceiptData(order: Order, opts: PaymentWebhookOptions) {
-  const { addressLine1, addressLine2 } = splitAddress(order);
-  const year = new Date().getFullYear();
-
-  return {
-    receipt_no: order.receipt_no,
-    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-    customer_name: order.name,
-    contact_number: `91${order.number}`,
-    address_line1: addressLine1,
-    address_line2: addressLine2,
-    scheme_name: order.scheme,
-    scheme_details: order.type,
-    month_label: opts.monthNames.map((m) => `${m} ${year}`).join(', '),
-    payment_mode: order.payment_mode || 'Gpay',
-  };
+/** The dashboard row only carries the filtered month, so read the whole plan fresh. */
+async function loadPassbook(order: Order, orderId: string) {
+  const { data, error } = await supabase
+    .from('monthly_payments')
+    .select('month_name, payment_status, payment_date')
+    .eq('order_id', orderId);
+  if (error) throw new Error(`could not load payments: ${error.message}`);
+  return buildPassbook(order, data ?? []);
 }
 
 /**
@@ -81,7 +47,7 @@ export async function notifyPaymentVerified(
   try {
     // Loaded on demand — html2canvas + jsPDF + the layout are a large chunk.
     const { generateReceiptPdf, uploadReceipt } = await import('@/lib/receiptPdf');
-    const pdf = await generateReceiptPdf(buildReceiptData(order, opts));
+    const pdf = await generateReceiptPdf(await loadPassbook(order, orderId));
     receiptUrl = await uploadReceipt(orderId, opts.monthNames, pdf);
 
     // Record it so the dashboard's Receipt link works and re-sends can reuse it.

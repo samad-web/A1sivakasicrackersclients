@@ -14,5 +14,7 @@
 - 2026-11-10: Bulk rejoin skips customers whose phone is already in the active cycle and reports them.
 - 2026-11-10: Select all = page, then "all N matching" across pages.
 
+- 2026-11-10: Invoice = client's passbook format, exactly as their PDF; app logo reused; Arial to match PDF. Diwali dates kept in code (`DIWALI` in `passbook.ts`), update yearly.
+
 ## Open questions / known issues
 - "Add Record" saves `current_month` as a month name (e.g. `November`), but `invoice-proxy` expects `YYYY-MM`. Pre-existing; not fixed here.
