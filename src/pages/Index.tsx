@@ -101,12 +101,14 @@ const Index = () => {
                 <Sparkles className="h-6 w-6 text-white absolute opacity-20" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-gradient">A1 Sivakasi Crackers</h1>
+                <h1 className="text-2xl font-black tracking-tight text-gradient whitespace-nowrap">A1 Sivakasi Crackers</h1>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Premium Order Management</p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+            {/* Two no-wrap groups: if space runs out the whole action group wraps, never one button. */}
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
               <AppNav />
               <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-500" />
@@ -135,6 +137,9 @@ const Index = () => {
                   ))}
                 </select>
               </div>
+              </div>
+
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
 
               {!isReadOnly && (
                 <Dialog>
@@ -163,9 +168,10 @@ const Index = () => {
                 onClick={() => refetch()}
                 disabled={isFetching}
                 className="bg-background/50 hover:bg-primary/5 border-none ring-1 ring-border"
+                title="Refresh"
+                aria-label={isFetching ? 'Refreshing' : 'Refresh'}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                {isFetching ? 'Refreshing...' : 'Refresh'}
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               </Button>
               {isAdmin && !isReadOnly && (
                 <SendRemindersDialog monthName={monthName} cycleYear={selectedCycleYear} />
@@ -177,9 +183,11 @@ const Index = () => {
                 onClick={() => signOut()}
                 className="bg-background/50 hover:bg-destructive/5 border-none ring-1 ring-border"
                 title="Sign out"
+                aria-label="Sign out"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
+              </div>
             </div>
           </div>
         </div>

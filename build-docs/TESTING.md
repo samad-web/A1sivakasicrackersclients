@@ -16,6 +16,9 @@ Results (2026-11-10):
 - ESLint on changed files: clean.
 - DB test: pending migration apply.
 
+## fix(dashboard-layout)
+- Full suite 22/22. Layout verified manually by user on localhost (archived + active cycle), 2026-11-10.
+
 ## passbook-invoice
 `src/lib/passbook.test.ts`: AC1 layout text, AC2 rows/statuses/10-month, AC3 totals, AC4 advance, AC5 phone + no mojibake, edges (no payments, status casing, cash ref, unknown Diwali year), security (HTML escaping).
 

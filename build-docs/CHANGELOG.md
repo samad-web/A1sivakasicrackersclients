@@ -1,5 +1,9 @@
 # Changelog
 
+## fix(dashboard-layout) (2026-11-10)
+- Orders table: fixed column widths (`table-fixed`), address wraps; no sideways scroll, Actions always visible. Desktop table from `xl` (1280px), cards below.
+- Header: actions in no-wrap groups so Logout never wraps alone; Refresh icon-only; title no-wrap.
+
 ## passbook-invoice (2026-11-10)
 - Receipts are now the client's passbook-style "N-MONTH CHIT INVOICE": all installments, paid-on dates, statuses, totals, Diwali line.
 - `buildPassbook` reads all monthly rows fresh on each verify. Old one-month template removed.

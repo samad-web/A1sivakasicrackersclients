@@ -248,7 +248,7 @@ export function OrdersTable({
 
       {selectable && pageIds.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 text-sm px-1">
-          <label className="flex items-center gap-2 font-medium lg:hidden">
+          <label className="flex items-center gap-2 font-medium xl:hidden">
             <input
               type="checkbox"
               checked={allPageSelected}
@@ -277,7 +277,7 @@ export function OrdersTable({
       )}
 
       {/* Mobile/Tablet Card View (Hidden on large screens) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 xl:hidden">
         {(!orders || orders.length === 0) ? (
           <div className="col-span-full py-12 text-center premium-card">
             <p className="text-muted-foreground">No records found</p>
@@ -371,14 +371,15 @@ export function OrdersTable({
       </div>
 
       {/* Desktop Table View (Visible only on large screens) */}
-      <div className="hidden lg:block premium-card overflow-hidden">
+      <div className="hidden xl:block premium-card overflow-hidden">
 
         <div className="overflow-x-auto">
-          <Table>
+          {/* Fixed layout: every column but Customer has a set width, so the address wraps and the table never overflows. */}
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-table-header/50 border-b hover:bg-table-header/50">
                 {selectable && (
-                  <TableHead className="w-10 py-4">
+                  <TableHead className="w-12 py-4">
                     <input
                       type="checkbox"
                       checked={allPageSelected}
@@ -388,14 +389,14 @@ export function OrdersTable({
                     />
                   </TableHead>
                 )}
-                <TableHead className="w-[120px] font-bold py-4">Receipt No</TableHead>
+                <TableHead className="w-[110px] font-bold py-4">Receipt No</TableHead>
                 <TableHead className="font-bold py-4">Customer / Address</TableHead>
-                <TableHead className="font-bold py-4">Scheme/Type</TableHead>
-                <TableHead className="font-bold py-4">Payment Mode</TableHead>
-                <TableHead className="text-right font-bold py-4">Value</TableHead>
-                <TableHead className="text-center font-bold py-4">Rejoin</TableHead>
-                <TableHead className="text-center font-bold py-4">Verified</TableHead>
-                <TableHead className="text-right font-bold py-4 pr-6">Actions</TableHead>
+                <TableHead className="w-[210px] font-bold py-4">Scheme/Type</TableHead>
+                <TableHead className="w-[120px] font-bold py-4">Payment Mode</TableHead>
+                <TableHead className="w-[130px] text-right font-bold py-4">Value</TableHead>
+                <TableHead className="w-[120px] text-center font-bold py-4">Rejoin</TableHead>
+                <TableHead className="w-[100px] text-center font-bold py-4">Verified</TableHead>
+                <TableHead className="w-[110px] text-right font-bold py-4 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -432,14 +433,14 @@ export function OrdersTable({
                         <p className="font-bold text-base group-hover:text-primary transition-colors">{order.name}</p>
                         <p className="text-xs text-muted-foreground font-medium">{order.number}</p>
                         {order.customer_address && (
-                          <p className="text-[11px] text-muted-foreground mt-1 whitespace-normal">{order.customer_address}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1 whitespace-normal break-words">{order.customer_address}</p>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="text-sm">
                         <p className="font-semibold">{order.scheme}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           <span className={`status-badge ${order.type === '12 Months' ? 'type-badge-12months' : 'bg-muted text-muted-foreground'}`}>
                             {order.type}
                           </span>
