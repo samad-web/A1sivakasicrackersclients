@@ -16,6 +16,7 @@
 
 - 2026-11-10: Invoice = client's passbook format, exactly as their PDF; app logo reused; Arial to match PDF. Diwali dates kept in code (`DIWALI` in `passbook.ts`), update yearly.
 - 2026-11-10: WhatsApp provider KWIC → WASI (https://wasi.sirahagents.com, `POST /api/v1/messages`, `Authorization: Bearer`, positional params). KWIC failures were template/variable-key mismatch; KWIC discontinued by user. Templates (approved in WASI): `payment_receipt_link` {{1}} receipt_no {{2}} scheme {{3}} PDF url; `payment_reminder` {{1}} month {{2}} name {{3}} amount. Only required Supabase secret: `WASI_API_KEY`; base/client_id/template names default in code. DB columns `kwic_message_id/kwic_response` kept (now hold WASI ids) to avoid a migration.
+- 2026-11-11: Client rule: October = free Diwali bonus month. Invoice marks it PAID ("Diwali Offer") and counts it in totals. Invoice-only; DB rows untouched.
 - WASI key lives in Supabase secrets; `.env` is git-tracked (legacy) so never commit the `WASI_API` line.
 
 ## Open questions / known issues

@@ -1,5 +1,8 @@
 # Changelog
 
+## feat(passbook-invoice): October bonus month (2026-11-11)
+- Invoice shows October as PAID with "Diwali Offer", counted in Total Paid / Balance. Frontend only → ships with Vercel deploy.
+
 ## fix(whatsapp): KWIC → WASI (2026-11-10)
 - `receipt-send` and `reminders-worker` now send via WASI templates `payment_receipt_link` / `payment_reminder`.
 - Error toast shows WASI's `error.message`. Missing receipt URL → placeholder text (Meta rejects empty params).
