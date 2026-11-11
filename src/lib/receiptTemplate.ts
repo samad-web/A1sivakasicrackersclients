@@ -109,9 +109,6 @@ body { font-family: Arial, Helvetica, sans-serif; color: var(--text-dark); line-
 .totals-label { color: var(--text-muted); text-align: right; padding-right: 12px; }
 .totals-val { text-align: right; font-weight: 700; color: var(--navy); width: 105px; }
 .totals-val.green { color: var(--green); } .totals-val.red { color: var(--red); }
-.current-due-row td { background: var(--red); color: #ffffff !important; padding: 5px 8px; font-weight: 700; }
-.current-due-row .totals-label { color: #ffffff; font-size: 11.5px; border-radius: 4px 0 0 4px; }
-.current-due-row .totals-val { color: #ffffff; font-size: 12px; border-radius: 0 4px 4px 0; }
 
 .diwali-milestone { text-align: center; font-size: 12px; font-weight: 700; color: var(--navy); margin: 6px 0 10px 0; letter-spacing: 0.3px; }
 .thank-you-banner { background: #fef9c3; border: 1px solid #fde047; padding: 6px 12px; border-radius: 4px; font-size: 10.5px; font-weight: 700; color: #854d0e; margin-bottom: 10px; }
@@ -189,7 +186,6 @@ body { font-family: Arial, Helvetica, sans-serif; color: var(--text-dark); line-
                         <tr><td class="totals-label">Total Chit Plan Value:</td><td class="totals-val">${formatRs(d.planValue)}</td></tr>
                         <tr><td class="totals-label">Total Amount Paid (${d.paidCount}M):</td><td class="totals-val green">${formatRs(d.paidAmount)}</td></tr>
                         <tr><td class="totals-label">Remaining Balance Due:</td><td class="totals-val red">${formatRs(d.remaining)}</td></tr>
-                        <tr class="current-due-row"><td class="totals-label">CURRENT DUE TO PAY:</td><td class="totals-val">${formatRs(d.currentDue)}</td></tr>
                     </table>
                 </div>
             </div>

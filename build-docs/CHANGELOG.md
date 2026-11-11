@@ -1,5 +1,8 @@
 # Changelog
 
+## feat(passbook-invoice): remove "Current Due to Pay" (2026-11-11)
+- Client request: red CURRENT DUE TO PAY row and `currentDue` field removed from the invoice.
+
 ## feat(passbook-invoice): October bonus month (2026-11-11)
 - Invoice shows October as PAID with "Diwali Offer", counted in Total Paid / Balance. Frontend only → ships with Vercel deploy.
 

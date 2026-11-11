@@ -29,7 +29,6 @@ export interface PassbookData {
   paidCount: number;
   paidAmount: number;
   remaining: number;
-  currentDue: number;
   diwali: { year: number; day: number; month: string; weekday: string } | null;
 }
 
@@ -124,7 +123,6 @@ export function buildPassbook(order: Order, payments: PassbookPayment[], today: 
     paidCount,
     paidAmount,
     remaining: Math.max(planValue - paidAmount, 0),
-    currentDue: rows.filter(r => r.status === 'PAY DUE').length * monthly,
     diwali: diwaliDate && {
       year: diwaliDate.getFullYear(),
       day: diwaliDate.getDate(),
