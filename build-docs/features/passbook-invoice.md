@@ -67,6 +67,11 @@ Replace the single-month receipt with a passbook-style "N-MONTH CHIT INVOICE" th
 - Invoice No = `A1SC-<receipt_no>`. Statuses only PAID / PAY DUE / UPCOMING; any due-but-unpaid month = PAY DUE.
 - Diwali line for cycle 2026-27: "2027 Diwali Date : October 29th Friday".
 
+## Client rule: October bonus (2026-11-11)
+- October is A1's Diwali bonus month: always `PAID`/`PAID [OK]`, Paid on = `Diwali Offer`, counted in Total Paid / Balance (customer paying Nov–Sep ends at balance 0).
+- 10-month schemes (Nov–Aug) have no October row, so unaffected. Invoice only; `monthly_payments` and dashboard stats unchanged.
+- AC: test `Client rule: October is always PAID (Diwali Offer) and counts in totals`.
+
 ## Open questions
 - Q1: New fireworks logo file (PNG/SVG) — until provided, keep current logo.
 - Q2: Diwali date source for future cycles (Settings vs. code update each year).

@@ -80,14 +80,17 @@ export function buildPassbook(order: Order, payments: PassbookPayment[], today: 
     const due = new Date(startYear, 10 + i, 10);
     const p = byMonth.get(FULL_MONTHS[due.getMonth()].toLowerCase());
     const paid = (p?.payment_status ?? '').trim().toLowerCase() === 'completed';
+    // Client rule (2026-11-11): October is A1's Diwali bonus month — always paid, counted in totals.
+    const bonus = due.getMonth() === 9;
 
     let status: InstallmentStatus;
     let paidOn: string | null = null;
-    if (paid) {
+    if (paid || bonus) {
       status = paidSeen === 0 ? 'PAID' : 'PAID [OK]';
       paidSeen++;
       const when = p?.payment_date ? new Date(p.payment_date) : null;
-      paidOn = `${when && !isNaN(when.getTime()) ? fmtDate(when) : '—'} (${paymentRef(order.payment_mode)})`;
+      paidOn = bonus ? 'Diwali Offer'
+        : `${when && !isNaN(when.getTime()) ? fmtDate(when) : '—'} (${paymentRef(order.payment_mode)})`;
     } else {
       status = due.getFullYear() * 12 + due.getMonth() <= nowKey ? 'PAY DUE' : 'UPCOMING';
     }
