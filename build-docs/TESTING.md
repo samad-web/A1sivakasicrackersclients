@@ -19,6 +19,9 @@ Results (2026-11-10):
 ## fix(dashboard-layout)
 - Full suite 22/22. Layout verified manually by user on localhost (archived + active cycle), 2026-11-10.
 
+## passbook-invoice: remove Current Due (2026-11-11)
+- Dropped `currentDue` assertions (field removed per client); HTML test asserts "CURRENT DUE" absent. Full suite 26/26.
+
 ## passbook-invoice: October bonus (2026-11-11)
 - New test for the rule (Oct PAID, all 12 paid → balance 0, real Oct payment not double-counted). Updated 3 existing expectations whose totals now include October (spec change, not weakened).
 - Full suite 26/26.

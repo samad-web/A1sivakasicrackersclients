@@ -20,4 +20,5 @@
 - WASI key lives in Supabase secrets; `.env` is git-tracked (legacy) so never commit the `WASI_API` line.
 
 ## Open questions / known issues
+- Orders with empty `value` show "Total Chit Plan Value Rs. 0.00" and Balance 0 on the invoice (seen 2026-11-11). Fix offered (use monthly × term); user deferred.
 - "Add Record" saves `current_month` as a month name (e.g. `November`), but `invoice-proxy` expects `YYYY-MM`. Pre-existing; not fixed here.

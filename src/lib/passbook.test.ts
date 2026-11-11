@@ -38,20 +38,18 @@ describe('Passbook invoice', () => {
 
   it('AC3: totals match the reference and paid + remaining = plan value', () => {
     const p = buildPassbook(order(), sample, april);
-    expect(p).toMatchObject({ planValue: 24000, monthly: 2000, paidCount: 6, paidAmount: 12000, remaining: 12000, currentDue: 2000 });
+    expect(p).toMatchObject({ planValue: 24000, monthly: 2000, paidCount: 6, paidAmount: 12000, remaining: 12000 });
     expect(p.paidAmount + p.remaining).toBe(p.planValue);
   });
 
-  it('AC2: every unpaid month that has come due is PAY DUE and counts toward current due', () => {
+  it('AC2: every unpaid month that has come due is PAY DUE', () => {
     const p = buildPassbook(order(), sample.slice(0, 2), april);
     expect(p.rows.slice(2, 6).every(r => r.status === 'PAY DUE')).toBe(true);
-    expect(p.currentDue).toBe(8000);
   });
 
   it('AC4: advance payment shows future months as PAID', () => {
     const p = buildPassbook(order(), [...sample, paid('April', '2027-04-02'), paid('May', '2027-04-02'), paid('June', '2027-04-02')], april);
     expect(p.rows.slice(5, 8).map(r => r.status)).toEqual(['PAID [OK]', 'PAID [OK]', 'PAID [OK]']);
-    expect(p.currentDue).toBe(0);
   });
 
   it('AC2: 10-month scheme renders 10 rows and the 10-MONTH title', () => {
@@ -72,7 +70,7 @@ describe('Passbook invoice', () => {
       .map(m => paid(m, '2027-09-01'));
     const p = buildPassbook(order(), allButOct, new Date(2027, 9, 20));
     expect(p.rows[11]).toMatchObject({ status: 'PAID [OK]', paidOn: 'Diwali Offer' });
-    expect(p).toMatchObject({ paidCount: 12, paidAmount: 24000, remaining: 0, currentDue: 0 });
+    expect(p).toMatchObject({ paidCount: 12, paidAmount: 24000, remaining: 0 });
     // A real October payment still shows as the offer, not double-counted.
     expect(buildPassbook(order(), [...allButOct, paid('October', '2027-10-05')], new Date(2027, 9, 20)).paidAmount).toBe(24000);
   });
@@ -80,7 +78,7 @@ describe('Passbook invoice', () => {
   it('Edge: no payments yet → paid 0, nothing negative', () => {
     const p = buildPassbook(order(), [], new Date(2026, 10, 5));
     // Only the October bonus month counts as paid.
-    expect(p).toMatchObject({ paidCount: 1, paidAmount: 2000, remaining: 22000, currentDue: 2000 });
+    expect(p).toMatchObject({ paidCount: 1, paidAmount: 2000, remaining: 22000 });
   });
 
   it('AC5: phone has no trailing slash without a secondary number, and joins both when present', () => {
@@ -94,9 +92,10 @@ describe('Passbook invoice', () => {
       '12-MONTH CHIT INVOICE', 'Yearly Plan Passbook Copy', 'A1SC-9', '12-Month Festival Cracker Chit',
       'Rs. 2,000.00 / month', 'Rs. 24,000.00 (12 Months)', 'Completed Months : 6 of 12 Installments Paid',
       'Pending Months : 6 Installments Remaining', 'Total Amount Paid (6M):', 'Rs. 12,000.00',
-      'CURRENT DUE TO PAY:', '2027 Diwali Date : October 29<sup>th</sup> Friday', 'id="page_0"',
+      '2027 Diwali Date : October 29<sup>th</sup> Friday', 'id="page_0"',
     ]) expect(html).toContain(text);
     expect(html).not.toContain('â€');
+    expect(html).not.toContain('CURRENT DUE'); // removed at client request 2026-11-11
   });
 
   it('Security: customer text is HTML-escaped', () => {
